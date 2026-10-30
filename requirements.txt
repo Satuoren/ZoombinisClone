@@ -1,0 +1,4 @@
+# pygame-ce is a drop-in fork of pygame (still `import pygame`) that ships
+# wheels for current Python versions sooner than upstream pygame.
+pygame-ce>=2.5
+pytest>=8
