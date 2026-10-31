@@ -1,0 +1,678 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Hidden Gate</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a field-notebook page. Left column is the play surface (gate scene, then the bank of waiting bloops). Right column is the notebook (evidence so far) and the rule builder. Researcher view opens underneath. */
+:root{
+  --bg:#edf1f4; --surface:#fbfcfd; --surface-2:#e4eaef; --ink:#14202e; --muted:#53647a; --line:#c6d1db;
+  --accent:#2850c8; --on-accent:#ffffff; --accent-soft:#dbe4fb;
+  --good:#17794f; --good-soft:#d6efe3; --bad:#b8372a; --bad-soft:#f8dcd7;
+  --river:#bdd8e8; --bankc:#c5d4c0; --plank:#b89b78; --gate:#4a5b70;
+  --c0:#e8583f; --c1:#1aa59a; --c2:#f0b429; --c3:#7c5cc4;
+  --f-display:'Bricolage Grotesque',system-ui,sans-serif;
+  --f-body:'Instrument Sans',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --fs-s:13px; --fs-b:15px; --fs-m:18px; --fs-l:24px; --fs-xl:clamp(30px,5vw,42px);
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1822; --surface:#16222f; --surface-2:#1e2d3d; --ink:#e6edf4; --muted:#9fb0c2; --line:#2c3e51;
+    --accent:#86a2ff; --on-accent:#0b1220; --accent-soft:#233463;
+    --good:#4cc38a; --good-soft:#173a2b; --bad:#ff8068; --bad-soft:#47201b;
+    --river:#1b3a50; --bankc:#27392b; --plank:#7a6245; --gate:#8ea0b6;
+    --c0:#ff6f55; --c1:#2cc4b8; --c2:#ffc94d; --c3:#9b7ee6;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1822; --surface:#16222f; --surface-2:#1e2d3d; --ink:#e6edf4; --muted:#9fb0c2; --line:#2c3e51;
+  --accent:#86a2ff; --on-accent:#0b1220; --accent-soft:#233463;
+  --good:#4cc38a; --good-soft:#173a2b; --bad:#ff8068; --bad-soft:#47201b;
+  --river:#1b3a50; --bankc:#27392b; --plank:#7a6245; --gate:#8ea0b6;
+  --c0:#ff6f55; --c1:#2cc4b8; --c2:#ffc94d; --c3:#9b7ee6;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background-color:var(--bg);
+  background-image:
+    linear-gradient(color-mix(in srgb,var(--line) 38%,transparent) 1px,transparent 1px),
+    linear-gradient(90deg,color-mix(in srgb,var(--line) 38%,transparent) 1px,transparent 1px);
+  background-size:28px 28px;
+  color:var(--ink);
+  font-family:var(--f-body); font-size:var(--fs-b); line-height:1.5;
+  padding-block:24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.app{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-0.01em}
+h1{font-size:var(--fs-xl);font-weight:800;line-height:1.05;letter-spacing:-0.025em}
+h2{font-size:var(--fs-m);font-weight:700}
+h3{font-size:var(--fs-b);font-weight:700}
+p{margin:0}
+.kicker{font-family:var(--f-mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 24px}
+.brand{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pips{display:flex;gap:8px;list-style:none;margin:0;padding:0}
+.pips li{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-family:var(--f-mono);font-size:13px;color:var(--muted);background:var(--surface)}
+.pips li.done{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.pips li.now{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:600}
+
+button,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);color:var(--on-accent);border:0;border-radius:12px;padding:12px 18px;font-weight:600;min-height:44px}
+.primary:hover{filter:brightness(1.08)}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-height:40px;color:var(--ink)}
+.ghost[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.ghost:hover{border-color:var(--accent)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.count{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+
+/* gate scene */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.stage-top{padding:16px 18px 14px;display:flex;flex-direction:column;gap:6px}
+.lead{max-width:62ch}
+.scene{position:relative;height:170px;--gw:clamp(84px,20vw,120px);overflow:hidden;border-block:1px solid var(--line);background:linear-gradient(var(--river),color-mix(in srgb,var(--river) 76%,var(--surface)))}
+.bank{position:absolute;top:104px;bottom:0;width:9%;background:var(--bankc)}
+.bank.l{left:0}.bank.r{right:0}
+.bridge{position:absolute;left:0;right:0;bottom:30px;height:16px;background:repeating-linear-gradient(90deg,var(--plank) 0 22px,color-mix(in srgb,var(--plank) 68%,#000) 22px 24px);border-block:2px solid color-mix(in srgb,var(--plank) 55%,#000)}
+.gatesvg{position:absolute;left:50%;bottom:36px;width:var(--gw);height:var(--gw);transform:translateX(-50%)}
+.gatesvg .post{fill:var(--gate)}
+.gatesvg .eye{fill:var(--accent)}
+.gatesvg .glint{fill:var(--surface)}
+.gatesvg .bars{opacity:0;transition:opacity .15s}
+.gatesvg .bars rect{fill:var(--gate)}
+.scene.shut .gatesvg .bars{opacity:1}
+.runner{position:absolute;bottom:44px;width:56px;height:56px;transform:translateX(-50%);z-index:2}
+.runner svg{width:100%;height:100%;display:block}
+.chip{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;font-weight:700;border:2px solid;z-index:3;background:var(--surface);white-space:nowrap}
+.chip.good{color:var(--good);border-color:var(--good)}
+.chip.bad{color:var(--bad);border-color:var(--bad)}
+.status{padding:10px 18px 14px;color:var(--muted);font-size:var(--fs-s);min-height:2.6em}
+
+/* shelf + notebook */
+.shelfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px}
+.bloop{aspect-ratio:1;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:6px;transition:transform .12s,border-color .12s}
+.bloop svg{width:100%;height:100%;display:block}
+.bloop:hover{transform:translateY(-2px);border-color:var(--accent)}
+.bloop.sent{opacity:.25}
+body.busy .bloop{pointer-events:none}
+.banks{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.banks h3{display:flex;align-items:center;gap:6px;font-size:var(--fs-s);font-family:var(--f-mono);font-weight:500;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.banks .p h3{color:var(--good)}.banks .f h3{color:var(--bad)}
+.bank-list{display:flex;flex-wrap:wrap;gap:6px;min-height:52px;padding:8px;border-radius:10px;background:var(--surface-2)}
+.mini{width:44px;height:44px;display:block}
+.mini svg{width:100%;height:100%;display:block}
+.mini.given{outline:2px dashed var(--accent);outline-offset:1px;border-radius:8px}
+.empty{color:var(--muted);font-size:var(--fs-s);align-self:center;padding-left:4px}
+
+/* rule builder */
+.guess{display:flex;flex-direction:column;gap:12px}
+.hint{color:var(--muted);font-size:var(--fs-s)}
+.clause{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.85fr) minmax(0,1.1fr);gap:8px}
+select{width:100%;min-width:0;min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+select:disabled{opacity:.5}
+.conn select{max-width:220px}
+.preview{font-family:var(--f-mono);font-size:var(--fs-s);padding:10px 12px;border-radius:10px;background:var(--surface-2);color:var(--ink);min-height:44px}
+.msg{font-size:var(--fs-s);min-height:2.6em}
+.msg.bad{color:var(--bad)}.msg.warn{color:var(--muted)}
+
+/* result + researcher */
+.result{display:flex;flex-direction:column;gap:16px}
+.result h2{font-size:var(--fs-l);font-weight:800;outline:none}
+.stats,.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:0}
+.stats dt,.kv dt{color:var(--muted)}
+.stats dd,.kv dd{margin:0;font-family:var(--f-mono);font-size:14px}
+.coach{max-width:62ch;padding:12px 14px;border-radius:10px;background:var(--accent-soft)}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:var(--fs-s)}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-weight:500;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.rv{display:flex;flex-direction:column;gap:18px}
+.rvgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:22px}
+@media (max-width:860px){.rvgrid{grid-template-columns:minmax(0,1fr)}}
+.rv h3{margin-bottom:8px}
+.rv ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:80ch}
+textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);resize:vertical}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <p class="kicker">Rule-finding puzzle · mini-game 1</p>
+      <h1>Hidden Gate</h1>
+    </div>
+    <ol class="pips" id="pips" aria-label="Gate progress"></ol>
+    <button type="button" class="ghost" id="rvToggle" aria-pressed="false" aria-controls="rv">Researcher view</button>
+  </header>
+
+  <main id="play">
+    <div class="grid">
+      <div class="col">
+        <section class="stage" aria-label="The gate">
+          <div class="stage-top">
+            <p class="kicker" id="gateLabel">Gate 1 of 5</p>
+            <p class="lead">The gatekeeper follows one secret rule about what a bloop looks like. Send bloops across one at a time, watch who gets through, then write the rule.</p>
+          </div>
+          <div class="scene" id="scene">
+            <div class="bank l"></div><div class="bank r"></div>
+            <div class="bridge"></div>
+            <svg class="gatesvg" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+              <g class="bars"><rect x="34" y="36" width="5" height="82" rx="2"/><rect x="48" y="36" width="5" height="82" rx="2"/><rect x="67" y="36" width="5" height="82" rx="2"/><rect x="81" y="36" width="5" height="82" rx="2"/></g>
+              <rect class="post" x="12" y="34" width="14" height="86" rx="3"/>
+              <rect class="post" x="94" y="34" width="14" height="86" rx="3"/>
+              <rect class="post" x="6" y="14" width="108" height="22" rx="7"/>
+              <circle class="eye" cx="60" cy="25" r="8.5"/>
+              <circle class="glint" cx="62.5" cy="22.5" r="2.5"/>
+            </svg>
+            <div class="runner" id="runner" hidden></div>
+            <div class="chip" id="chip" hidden></div>
+          </div>
+          <p class="status" id="stageStatus" role="status" aria-live="polite">Pick a bloop below to send it to the gate.</p>
+        </section>
+
+        <section class="card" aria-label="Bloops waiting on the bank">
+          <div class="row"><h2>On the bank</h2><span class="count" id="shelfCount"></span></div>
+          <div class="shelfgrid" id="shelf"></div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card" aria-label="Field notebook">
+          <div class="row"><h2>Field notebook</h2><span class="count" id="tested"></span></div>
+          <div class="banks">
+            <div class="p"><h3><span aria-hidden="true">✓</span> Crossed</h3><div class="bank-list" id="bankPass"></div></div>
+            <div class="f"><h3><span aria-hidden="true">✕</span> Turned back</h3><div class="bank-list" id="bankFail"></div></div>
+          </div>
+        </section>
+
+        <form class="card guess" id="guess" autocomplete="off">
+          <h2>Your guess at the rule</h2>
+          <p class="hint">A bloop crosses if…</p>
+          <div class="clause">
+            <select id="a1" aria-label="Feature"></select>
+            <select id="n1" aria-label="Is or is not"><option value="0">is</option><option value="1">is not</option></select>
+            <select id="v1" aria-label="Value" disabled></select>
+          </div>
+          <div class="conn">
+            <select id="op" aria-label="Add a second clue">
+              <option value="">No second clue</option>
+              <option value="and">AND (both must be true)</option>
+              <option value="or">OR (either can be true)</option>
+            </select>
+          </div>
+          <div class="clause" id="clause2" hidden>
+            <select id="a2" aria-label="Second feature"></select>
+            <select id="n2" aria-label="Is or is not"><option value="0">is</option><option value="1">is not</option></select>
+            <select id="v2" aria-label="Second value" disabled></select>
+          </div>
+          <div class="preview" id="preview">Your rule: not set yet</div>
+          <button type="submit" class="primary" id="check">Check my rule</button>
+          <p class="msg" id="msg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <section id="result" class="card result" hidden></section>
+
+  <section id="rv" class="card rv" hidden aria-label="Researcher view">
+    <h2>Researcher view</h2>
+    <div class="rvgrid">
+      <div>
+        <h3>Live session</h3>
+        <dl class="kv" id="rvLive"></dl>
+      </div>
+      <div>
+        <h3>How an action becomes evidence of CT</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>CT skill</th><th>Player does</th><th>Game logs</th><th>Proxy metric</th></tr></thead>
+            <tbody>
+              <tr><td>Decomposition</td><td>Splits four features into single questions</td><td>Features that differ between consecutive tests</td><td>One-change-at-a-time tests (%)</td></tr>
+              <tr><td>Pattern recognition</td><td>Spots what crossers share and turned-back bloops lack</td><td>Whether each test could still split the rules left standing</td><td>Tests that narrowed the possibilities (%); redundant tests</td></tr>
+              <tr><td>Abstraction</td><td>Replaces a list of cases with one general rule</td><td>Submitted rule compared with the hidden rule on all 108 bloops</td><td>Correct on first guess; equivalent rules accepted</td></tr>
+              <tr><td>Algorithmic thinking</td><td>Runs a repeatable test sequence</td><td>Order of tests and the draft rule at test time</td><td>Strategy label; confirming vs. challenging tests</td></tr>
+              <tr><td>Debugging</td><td>Fixes a wrong rule after a counterexample</td><td>Wrong guesses and draft edits after each</td><td>Wrong guesses per gate; draft edits</td></tr>
+              <tr><td>Transfer</td><td>Reuses the same logic on new features</td><td>Gate 3 and gate 5 share logic, no shared features</td><td>Tests at gate 5 vs. gate 3</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>Does it really measure CT? Open questions</h3>
+      <ul>
+        <li>Every metric above is a behavioral proxy. None is shown to be CT until it is checked against something outside the game.</li>
+        <li>Content check: ask two or three CT researchers to map each metric to a CT definition and mark the ones that do not fit.</li>
+        <li>Convergent check: compare gate scores with a validated CT test or Bebras-style items from the same players.</li>
+        <li>Think-aloud check: watch five players and confirm that "one change at a time" reflects intent, not luck.</li>
+        <li>Reliability: gates 3 and 5 have the same logic, so a player's tests should be similar on both. Large gaps point to feature difficulty or noise.</li>
+        <li>Confounds to rule out: lucky guesses, prior Mastermind-style experience, color perception, and attention.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Session log</h3>
+      <textarea id="logText" rows="8" readonly aria-label="Session log as JSON"></textarea>
+      <div class="btnrow" style="margin-top:10px"><button type="button" class="ghost" id="copyLog">Copy log as JSON</button><span class="hint" id="copyNote"></span></div>
+    </div>
+  </section>
+</div>
+
+<script id="logic">
+const ATTRS=[
+  {key:'color',name:'Color',values:['coral','teal','gold','violet']},
+  {key:'eyes',name:'Eyes',values:['one','two','three']},
+  {key:'head',name:'Head',values:['bald','antenna','horns']},
+  {key:'feet',name:'Feet',values:['paws','wheels','springs']}
+];
+const Logic=(function(){
+  const ALL=[];
+  for(let c=0;c<4;c++)for(let e=0;e<3;e++)for(let h=0;h<3;h++)for(let f=0;f<3;f++)ALL.push([c,e,h,f]);
+  const N=ALL.length;
+  const evalLit=(L,x)=>((x[L.a]===L.v)!==L.neg);
+  const evalRule=(r,x)=>r.op==='lit'?evalLit(r.p,x):r.op==='and'?(evalLit(r.p,x)&&evalLit(r.q,x)):(evalLit(r.p,x)||evalLit(r.q,x));
+  const truth=r=>{const t=new Uint8Array(N);for(let i=0;i<N;i++)t[i]=evalRule(r,ALL[i])?1:0;return t;};
+  const litText=L=>ATTRS[L.a].name+' '+(L.neg?'is not':'is')+' '+ATTRS[L.a].values[L.v];
+  const ruleText=r=>r.op==='lit'?litText(r.p):litText(r.p)+' '+r.op.toUpperCase()+' '+litText(r.q);
+  const ham=(i,j)=>{let d=0;for(let k=0;k<4;k++)if(ALL[i][k]!==ALL[j][k])d++;return d;};
+  const rnd=n=>Math.floor(Math.random()*n);
+  const shuffle=a=>{const b=a.slice();for(let i=b.length-1;i>0;i--){const j=rnd(i+1);const t=b[i];b[i]=b[j];b[j]=t;}return b;};
+  const pickLit=(a,neg)=>({a:a,v:rnd(ATTRS[a].values.length),neg:!!neg});
+
+  // Every rule a player could reasonably write: one clue, or two clues on different features joined by AND / OR.
+  const lits=[];
+  ATTRS.forEach((A,a)=>A.values.forEach((_,v)=>{lits.push({a:a,v:v,neg:false});lits.push({a:a,v:v,neg:true});}));
+  const CANDS=(function(){
+    const seen=new Map();
+    const add=r=>{const tt=truth(r);const k=tt.join('');if(!seen.has(k))seen.set(k,{r:r,tt:tt});};
+    lits.forEach(p=>add({op:'lit',p:p}));
+    lits.forEach(p=>lits.forEach(q=>{if(p.a<q.a){add({op:'and',p:p,q:q});add({op:'or',p:p,q:q});}}));
+    return Array.from(seen.values());
+  })();
+
+  function makeRule(idx){
+    if(idx===0)return{op:'lit',p:pickLit(rnd(4),false)};
+    if(idx===1)return{op:'lit',p:pickLit(rnd(4),true)};
+    const a=rnd(4);let b=rnd(3);if(b>=a)b++;
+    return{op:idx===3?'or':'and',p:pickLit(Math.min(a,b),false),q:pickLit(Math.max(a,b),false)};
+  }
+  function makeTransferRule(prev){
+    const used=[prev.p.a,prev.q.a];
+    const rest=[0,1,2,3].filter(a=>used.indexOf(a)<0);
+    return{op:'and',p:pickLit(rest[0],false),q:pickLit(rest[1],false)};
+  }
+  // A hand always holds crossers, turned-back bloops, and near-misses (one feature away from a crosser).
+  function dealHand(rule,exclude,nPass,nFail){
+    const tt=truth(rule);const pass=[],fail=[];
+    for(let i=0;i<N;i++){if(exclude.has(i))continue;(tt[i]?pass:fail).push(i);}
+    const P=shuffle(pass).slice(0,nPass);const F=shuffle(fail);
+    const picked=[];
+    for(const p of P){
+      if(picked.length>=Math.floor(nFail/2))break;
+      const nm=F.find(f=>picked.indexOf(f)<0&&ham(p,f)===1);
+      if(nm!==undefined)picked.push(nm);
+    }
+    for(const f of F){if(picked.length>=nFail)break;if(picked.indexOf(f)<0)picked.push(f);}
+    return shuffle(P.concat(picked));
+  }
+  function isInformative(cands,id){let s=0;for(const c of cands)s+=c.tt[id];return s>0&&s<cands.length;}
+  function narrow(cands,id,pass){const v=pass?1:0;return cands.filter(c=>c.tt[id]===v);}
+  function strategy(m){
+    if(m.tests<2)return{key:'quick',label:'Solved with very few tests'};
+    const eff=m.informative/m.tests>=0.7;
+    const sys=m.ctrlDen>0&&m.controlled/m.ctrlDen>=0.5;
+    if(sys&&eff)return{key:'sys_eff',label:'Systematic and efficient'};
+    if(sys)return{key:'sys',label:'Systematic, with some redundant tests'};
+    if(eff)return{key:'eff',label:'Efficient without one-change-at-a-time tests'};
+    return{key:'explore',label:'Exploratory: many tests repeated what was known'};
+  }
+  function describe(x){
+    const A=ATTRS;const e=A[1].values[x[1]];const h=A[2].values[x[2]];
+    return A[0].values[x[0]]+' bloop, '+e+(e==='one'?' eye':' eyes')+', '+(h==='bald'?'bald':h==='antenna'?'an antenna':'horns')+', '+A[3].values[x[3]];
+  }
+  return{ALL:ALL,N:N,CANDS:CANDS,evalRule:evalRule,truth:truth,ruleText:ruleText,ham:ham,rnd:rnd,makeRule:makeRule,makeTransferRule:makeTransferRule,dealHand:dealHand,isInformative:isInformative,narrow:narrow,strategy:strategy,describe:describe};
+})();
+</script>
+
+<script id="ui">
+(function(){
+'use strict';
+const {ALL,N,CANDS,evalRule,truth,ruleText,ham,rnd,makeRule,makeTransferRule,dealHand,isInformative,narrow,strategy,describe}=Logic;
+const $=s=>document.querySelector(s);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const OUT='#1d2433';
+const LEVELS=[
+  {name:'One feature'},
+  {name:'Everything but one feature'},
+  {name:'Both together (AND)'},
+  {name:'Either one (OR)'},
+  {name:'Both together, new features (transfer)'}
+];
+const COACH={
+  quick:'You solved this gate with very few tests.',
+  sys_eff:'Most of your tests changed a single feature, so you could see what each feature did on its own. That is decomposition.',
+  sys:'You changed one feature at a time, which isolates its effect. A few tests repeated what the notebook already showed.',
+  eff:'Your tests kept cutting down the possibilities even when several features changed at once. That is pattern recognition at work.',
+  explore:'Many tests repeated what you already knew. Next time, pick a bloop that settles a question the notebook cannot answer yet.'
+};
+let S;
+
+function newSession(){
+  S={sid:Math.random().toString(36).slice(2,8),started:new Date().toISOString(),lvl:0,view:'play',busy:false,L:null,done:[],log:[],rule3:null};
+}
+function logEv(type,data){
+  const L=S.L;
+  S.log.push(Object.assign({gate:S.lvl+1,t:L?Math.round(performance.now()-L.t0):0,type:type},data||{}));
+}
+
+/* ---------- drawing ---------- */
+function bloop(x,size){
+  const c=x[0],e=x[1],h=x[2],f=x[3];
+  const body='style="fill:var(--c'+c+')"';
+  const st='stroke="'+OUT+'" stroke-width="3" stroke-linejoin="round"';
+  let s='<svg viewBox="0 0 100 100" width="'+size+'" height="'+size+'" aria-hidden="true" focusable="false">';
+  if(f===0)s+='<ellipse cx="37" cy="83" rx="10" ry="6" '+body+' '+st+'/><ellipse cx="63" cy="83" rx="10" ry="6" '+body+' '+st+'/>';
+  if(f===1)s+='<circle cx="36" cy="85" r="8" fill="#d5dce6" '+st+'/><circle cx="36" cy="85" r="2.5" fill="'+OUT+'"/><circle cx="64" cy="85" r="8" fill="#d5dce6" '+st+'/><circle cx="64" cy="85" r="2.5" fill="'+OUT+'"/>';
+  if(f===2)s+='<polyline points="36,76 30,80 42,84 30,88 36,92" fill="none" stroke="'+OUT+'" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><polyline points="64,76 58,80 70,84 58,88 64,92" fill="none" stroke="'+OUT+'" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  if(h===1)s+='<path d="M50 32 L50 16" stroke="'+OUT+'" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="11" r="6" fill="#f4efe2" '+st+'/>';
+  if(h===2)s+='<path d="M33 36 L27 13 L46 31 Z" fill="#f4efe2" '+st+'/><path d="M67 36 L73 13 L54 31 Z" fill="#f4efe2" '+st+'/>';
+  s+='<ellipse cx="50" cy="54" rx="30" ry="25" '+body+' '+st+'/>';
+  const eye=(cx,cy,r,pr)=>'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="#fff" stroke="'+OUT+'" stroke-width="2.5"/><circle cx="'+(cx+1)+'" cy="'+(cy+1)+'" r="'+pr+'" fill="'+OUT+'"/>';
+  if(e===0)s+=eye(50,50,10,4.5);
+  if(e===1)s+=eye(38,50,7.5,3.4)+eye(62,50,7.5,3.4);
+  if(e===2)s+=eye(33,52,6,2.8)+eye(50,45,6,2.8)+eye(67,52,6,2.8);
+  s+='<path d="M43 65 Q50 70 57 65" fill="none" stroke="'+OUT+'" stroke-width="3" stroke-linecap="round"/>';
+  return s+'</svg>';
+}
+
+/* ---------- levels ---------- */
+function startLevel(idx){
+  S.lvl=idx;S.view='play';S.busy=false;
+  let rule;
+  if(idx===4)rule=makeTransferRule(S.rule3);else rule=makeRule(idx);
+  if(idx===2)S.rule3=rule;
+  const L={idx:idx,rule:rule,tt:truth(rule),hand:dealHand(rule,new Set(),4,8),tested:[],cands:CANDS.slice(),
+    t0:performance.now(),prev:null,wrong:0,guesses:0,drafts:0,tests:0,informative:0,controlled:0,ctrlDen:0,draftTests:0,draftPass:0};
+  S.L=L;
+  logEv('level_start',{rule:ruleText(rule),structure:LEVELS[idx].name,hand:L.hand.slice()});
+  resetBuilder();
+  $('#stageStatus').textContent='Pick a bloop below to send it to the gate.';
+  document.body.classList.remove('busy');
+  render();
+}
+
+function render(){
+  renderPips();
+  const play=S.view==='play';
+  $('#play').hidden=!play;
+  $('#result').hidden=play;
+  if(play){
+    $('#gateLabel').textContent='Gate '+(S.lvl+1)+' of 5';
+    renderShelf();renderBanks();
+  }else renderResult();
+  renderRV();
+}
+function renderPips(){
+  $('#pips').innerHTML=LEVELS.map((_,i)=>{
+    const cls=i<S.done.length?'done':(i===S.lvl&&S.view==='play'?'now':'');
+    return '<li class="'+cls+'"'+(i===S.lvl&&S.view==='play'?' aria-current="step"':'')+'><span class="sr">Gate </span>'+(i+1)+'</li>';
+  }).join('');
+}
+function renderShelf(){
+  const L=S.L;
+  $('#shelf').innerHTML=L.hand.map(id=>'<button type="button" class="bloop" data-id="'+id+'" aria-label="Send '+describe(ALL[id])+'" title="'+describe(ALL[id])+'">'+bloop(ALL[id],72)+'</button>').join('');
+  $('#shelfCount').textContent=L.hand.length+' waiting';
+}
+function renderBanks(){
+  const L=S.L;
+  const mk=t=>'<span class="mini'+(t.given?' given':'')+'" role="img" aria-label="'+describe(ALL[t.id])+(t.given?' (shown by the gate)':'')+'" title="'+describe(ALL[t.id])+(t.given?' (shown by the gate)':'')+'">'+bloop(ALL[t.id],44)+'</span>';
+  const p=L.tested.filter(t=>t.pass),f=L.tested.filter(t=>!t.pass);
+  $('#bankPass').innerHTML=p.length?p.map(mk).join(''):'<span class="empty">None yet</span>';
+  $('#bankFail').innerHTML=f.length?f.map(mk).join(''):'<span class="empty">None yet</span>';
+  $('#tested').textContent=L.tested.length+' tested';
+}
+
+/* ---------- sending a bloop ---------- */
+async function animate(x,pass){
+  const run=$('#runner'),chip=$('#chip'),scene=$('#scene'),status=$('#stageStatus');
+  const T=reduce?0:520;
+  scene.classList.remove('shut');
+  run.innerHTML=bloop(x,56);run.style.transition='none';run.style.left='7%';run.style.opacity='1';run.hidden=false;
+  void run.offsetWidth;
+  run.style.transition=reduce?'none':'left '+T+'ms ease-in-out';
+  run.style.left='calc(50% - var(--gw) / 2 - 30px)';
+  status.textContent='Walking up to the gate…';
+  await sleep(T+60);
+  chip.className='chip '+(pass?'good':'bad');
+  chip.textContent=pass?'✓ Crossed':'✕ Turned back';
+  chip.hidden=false;
+  if(!pass)scene.classList.add('shut');
+  status.textContent=pass?'The gate opened. That bloop crossed.':'The gate stayed shut. That bloop was turned back.';
+  await sleep(reduce?650:520);
+  if(!reduce){
+    run.style.transition='left '+T+'ms ease-in, opacity '+T+'ms ease-in';
+    run.style.left=pass?'94%':'7%';run.style.opacity='0';
+    await sleep(T);
+  }
+  run.hidden=true;chip.hidden=true;scene.classList.remove('shut');
+}
+
+async function sendBloop(id,given){
+  const L=S.L;
+  if(S.busy||S.view!=='play')return;
+  S.busy=true;document.body.classList.add('busy');
+  const x=ALL[id],pass=!!L.tt[id];
+  const btn=$('#shelf .bloop[data-id="'+id+'"]');if(btn)btn.classList.add('sent');
+  setMsg('','');
+  if(!given){
+    const d=draftRule();
+    const pred=d?(evalRule(d,x)?1:0):null;
+    const informative=isInformative(L.cands,id);
+    const controlled=L.prev!==null?ham(L.prev,id)===1:null;
+    L.tests++;if(informative)L.informative++;
+    if(controlled!==null){L.ctrlDen++;if(controlled)L.controlled++;}
+    if(pred!==null){L.draftTests++;if(pred===1)L.draftPass++;}
+    L.prev=id;
+    logEv('test',{bloop:id,features:describe(x),outcome:pass?'crossed':'turned_back',informative:informative,one_change:controlled,draft_prediction:pred===null?null:(pred?'cross':'back'),rules_left_before:L.cands.length});
+  }else{
+    logEv('counterexample',{bloop:id,features:describe(x),outcome:pass?'crossed':'turned_back',rules_left_before:L.cands.length});
+  }
+  L.cands=narrow(L.cands,id,pass);
+  L.tested.push({id:id,pass:pass,given:!!given});
+  L.hand=L.hand.filter(h=>h!==id);
+  await animate(x,pass);
+  S.busy=false;document.body.classList.remove('busy');
+  if(L.hand.length===0){
+    const used=new Set(L.tested.map(t=>t.id));
+    L.hand=dealHand(L.rule,used,3,5);
+    logEv('refill',{hand:L.hand.slice()});
+    $('#stageStatus').textContent='More bloops have arrived on the bank.';
+  }
+  render();
+}
+
+/* ---------- rule builder ---------- */
+function fillA(i,skip){
+  const sel=$('#a'+i);
+  sel.innerHTML='<option value="">Feature…</option>'+ATTRS.map((A,k)=>String(k)===skip?'':'<option value="'+k+'">'+A.name+'</option>').join('');
+}
+function setValues(i){
+  const a=$('#a'+i).value,v=$('#v'+i);
+  if(a===''){v.innerHTML='<option value="">Value…</option>';v.disabled=true;return;}
+  v.disabled=false;
+  v.innerHTML='<option value="">Value…</option>'+ATTRS[+a].values.map((x,k)=>'<option value="'+k+'">'+x+'</option>').join('');
+}
+function rebuildA2(){
+  const a1=$('#a1').value,cur=$('#a2').value;
+  fillA(2,a1);
+  if(cur!==''&&cur!==a1)$('#a2').value=cur;
+  else{$('#a2').value='';setValues(2);}
+}
+function readLit(i){
+  const a=$('#a'+i).value,v=$('#v'+i).value;
+  if(a===''||v==='')return null;
+  return{a:+a,v:+v,neg:$('#n'+i).value==='1'};
+}
+function draftRule(){
+  const p=readLit(1);if(!p)return null;
+  const op=$('#op').value;if(!op)return{op:'lit',p:p};
+  const q=readLit(2);if(!q)return null;
+  return{op:op,p:p,q:q};
+}
+function setMsg(text,kind){const m=$('#msg');m.textContent=text;m.className='msg '+(kind||'');}
+function updatePreview(){
+  const r=draftRule();
+  $('#preview').textContent=r?'Your rule: a bloop crosses if '+ruleText(r):'Your rule: not set yet';
+}
+function resetBuilder(){
+  fillA(1,'');fillA(2,'');
+  $('#n1').value='0';$('#n2').value='0';$('#op').value='';
+  $('#clause2').hidden=true;
+  setValues(1);setValues(2);updatePreview();setMsg('','');
+}
+$('#guess').addEventListener('change',e=>{
+  if(S.view!=='play')return;
+  const id=e.target.id;
+  if(id==='a1'){setValues(1);rebuildA2();}
+  else if(id==='a2'){setValues(2);}
+  else if(id==='op'){$('#clause2').hidden=!e.target.value;}
+  updatePreview();
+  const r=draftRule();
+  if(r)S.L.drafts++;
+  logEv('draft',{rule:r?ruleText(r):'incomplete'});
+  setMsg('','');
+});
+$('#guess').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(S.busy||S.view!=='play')return;
+  const L=S.L,r=draftRule();
+  if(!r){setMsg('Finish the first clue: choose a feature and a value.','warn');return;}
+  const gt=truth(r),diff=[];
+  for(let i=0;i<N;i++)if(gt[i]!==L.tt[i])diff.push(i);
+  L.guesses++;
+  const correct=diff.length===0;
+  logEv('guess',{rule:ruleText(r),correct:correct,attempt:L.guesses,bloops_misclassified:diff.length});
+  if(correct){finishLevel();return;}
+  L.wrong++;
+  const seen=new Set(L.tested.map(t=>t.id));
+  const fresh=diff.filter(i=>!seen.has(i));
+  if(fresh.length){
+    const inHand=fresh.filter(i=>L.hand.indexOf(i)>=0);
+    const pool=inHand.length?inHand:fresh;
+    const id=pool[rnd(pool.length)];
+    setMsg(L.tt[id]?'Not quite. Your rule says this bloop would be turned back, but the gate lets it cross.':'Not quite. Your rule says this bloop would cross, but the gate turns it back.','bad');
+    await sendBloop(id,true);
+  }else{
+    setMsg('Not quite. Your rule disagrees with '+diff.length+' bloop'+(diff.length===1?'':'s')+' you could already see in the notebook.','bad');
+  }
+});
+$('#shelf').addEventListener('click',e=>{
+  const b=e.target.closest('.bloop');
+  if(b)sendBloop(+b.dataset.id,false);
+});
+
+/* ---------- finishing ---------- */
+const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+function finishLevel(){
+  const L=S.L,secs=Math.round((performance.now()-L.t0)/1000);
+  const st=strategy({tests:L.tests,informative:L.informative,controlled:L.controlled,ctrlDen:L.ctrlDen});
+  const sum={gate:L.idx+1,structure:LEVELS[L.idx].name,rule:ruleText(L.rule),tests:L.tests,narrowing_tests:L.informative,redundant_tests:L.tests-L.informative,one_change_tests:L.controlled,one_change_possible:L.ctrlDen,wrong_guesses:L.wrong,draft_edits:L.drafts,draft_confirming_tests:L.draftPass,draft_tests:L.draftTests,seconds:secs,strategy:st.label,strategy_key:st.key};
+  S.done.push(sum);
+  logEv('level_end',sum);
+  S.view=L.idx===4?'final':'result';
+  render();
+}
+function renderResult(){
+  const d=S.done[S.done.length-1],box=$('#result');
+  if(S.view==='result'){
+    box.innerHTML='<p class="kicker">Gate '+d.gate+' cleared</p>'
+      +'<h2 id="resultTitle" tabindex="-1">The rule: a bloop crosses if '+d.rule+'</h2>'
+      +'<dl class="stats">'
+      +'<dt>Tests sent</dt><dd>'+d.tests+'</dd>'
+      +'<dt>Tests that narrowed the possibilities</dt><dd>'+d.narrowing_tests+' of '+d.tests+'</dd>'
+      +'<dt>One-change-at-a-time tests</dt><dd>'+d.one_change_tests+' of '+d.one_change_possible+'</dd>'
+      +'<dt>Wrong guesses</dt><dd>'+d.wrong_guesses+'</dd>'
+      +'<dt>Time</dt><dd>'+fmt(d.seconds)+'</dd></dl>'
+      +'<p class="coach"><strong>'+d.strategy+'.</strong> '+COACH[d.strategy_key]+'</p>'
+      +'<div class="btnrow"><button type="button" class="primary" data-act="next">Go to gate '+(d.gate+1)+'</button></div>';
+  }else{
+    const g3=S.done[2],g5=S.done[4];
+    const cmp=g5.tests<g3.tests?'Fewer tests the second time suggests you reused what you learned.':g5.tests===g3.tests?'You needed the same number of tests both times.':'More tests the second time. The same logic can feel harder when the features change.';
+    box.innerHTML='<p class="kicker">All five gates cleared</p>'
+      +'<h2 id="resultTitle" tabindex="-1">How you played</h2>'
+      +'<div class="tablewrap"><table><thead><tr><th>Gate</th><th>Rule</th><th>Tests</th><th>Narrowing</th><th>One change</th><th>Wrong</th><th>Time</th></tr></thead><tbody>'
+      +S.done.map(x=>'<tr><td>'+x.gate+'</td><td>'+x.rule+'</td><td>'+x.tests+'</td><td>'+x.narrowing_tests+'/'+x.tests+'</td><td>'+x.one_change_tests+'/'+x.one_change_possible+'</td><td>'+x.wrong_guesses+'</td><td>'+fmt(x.seconds)+'</td></tr>').join('')
+      +'</tbody></table></div>'
+      +'<p class="coach">Gates 3 and 5 used the same logic, two features that must both match, with no features in common. You needed '+g3.tests+' tests at gate 3 and '+g5.tests+' at gate 5. '+cmp+'</p>'
+      +'<div class="btnrow"><button type="button" class="primary" data-act="again">Play again</button><button type="button" class="ghost" data-act="copy">Copy session log</button><span class="hint" id="copyNote2"></span></div>';
+  }
+  const t=$('#resultTitle');if(t)t.focus();
+}
+$('#result').addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');if(!a)return;
+  if(a.dataset.act==='next')startLevel(S.lvl+1);
+  else if(a.dataset.act==='again'){newSession();startLevel(0);}
+  else if(a.dataset.act==='copy')copyLog($('#copyNote2'));
+});
+
+/* ---------- researcher view ---------- */
+function renderRV(){
+  const L=S.L;if(!L)return;
+  const rows=[
+    ['Hidden rule','A bloop crosses if '+ruleText(L.rule)],
+    ['Rule logic',LEVELS[L.idx].name],
+    ['Tests sent',String(L.tests)],
+    ['Narrowed the possibilities',L.informative+' of '+L.tests],
+    ['Redundant tests',String(L.tests-L.informative)],
+    ['One-change-at-a-time',L.controlled+' of '+L.ctrlDen],
+    ['Tests the draft rule predicted would cross',L.draftPass+' of '+L.draftTests],
+    ['Wrong guesses',String(L.wrong)],
+    ['Draft edits',String(L.drafts)],
+    ['Rule patterns still consistent',L.cands.length+' of '+CANDS.length]
+  ];
+  $('#rvLive').innerHTML=rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+r[1]+'</dd>').join('');
+  $('#logText').value=JSON.stringify(exportObj(),null,1);
+}
+function exportObj(){return{game:'Hidden Gate',version:1,session:S.sid,started:S.started,gates:S.done,events:S.log};}
+async function copyLog(noteEl){
+  const ta=$('#logText');ta.value=JSON.stringify(exportObj(),null,1);
+  let ok=false;
+  try{await navigator.clipboard.writeText(ta.value);ok=true;}
+  catch(_){try{ta.focus();ta.select();ok=document.execCommand('copy');}catch(__){}}
+  const msg=ok?'Copied the session log.':'Select the log text in Researcher view and copy it.';
+  if(noteEl)noteEl.textContent=msg;
+}
+$('#copyLog').addEventListener('click',()=>copyLog($('#copyNote')));
+$('#rvToggle').addEventListener('click',e=>{
+  const open=$('#rv').hidden;
+  $('#rv').hidden=!open;e.currentTarget.setAttribute('aria-pressed',String(open));
+});
+function applyHash(){
+  const participant=location.hash==='#play';
+  $('#rvToggle').hidden=participant;
+  if(participant){$('#rv').hidden=true;$('#rvToggle').setAttribute('aria-pressed','false');}
+}
+window.addEventListener('hashchange',applyHash);
+
+newSession();startLevel(0);applyHash();
+})();
+</script>
+
+</body></html>
