@@ -1,0 +1,668 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Hidden Gate: Route Choice</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a field-notebook page. Left column is the play surface (gate scene, then the bank of waiting bloops). Right column is the notebook (evidence so far) and the rule builder. Researcher view opens underneath. */
+:root{
+  --bg:#edf1f4; --surface:#fbfcfd; --surface-2:#e4eaef; --ink:#14202e; --muted:#53647a; --line:#c6d1db;
+  --accent:#2850c8; --on-accent:#ffffff; --accent-soft:#dbe4fb;
+  --good:#17794f; --good-soft:#d6efe3; --bad:#b8372a; --bad-soft:#f8dcd7;
+  --river:#bdd8e8; --bankc:#c5d4c0; --plank:#b89b78; --gate:#4a5b70;
+  --c0:#e8583f; --c1:#1aa59a; --c2:#f0b429; --c3:#7c5cc4;
+  --f-display:'Bricolage Grotesque',system-ui,sans-serif;
+  --f-body:'Instrument Sans',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --fs-s:13px; --fs-b:15px; --fs-m:18px; --fs-l:24px; --fs-xl:clamp(30px,5vw,42px);
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1822; --surface:#16222f; --surface-2:#1e2d3d; --ink:#e6edf4; --muted:#9fb0c2; --line:#2c3e51;
+    --accent:#86a2ff; --on-accent:#0b1220; --accent-soft:#233463;
+    --good:#4cc38a; --good-soft:#173a2b; --bad:#ff8068; --bad-soft:#47201b;
+    --river:#1b3a50; --bankc:#27392b; --plank:#7a6245; --gate:#8ea0b6;
+    --c0:#ff6f55; --c1:#2cc4b8; --c2:#ffc94d; --c3:#9b7ee6;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1822; --surface:#16222f; --surface-2:#1e2d3d; --ink:#e6edf4; --muted:#9fb0c2; --line:#2c3e51;
+  --accent:#86a2ff; --on-accent:#0b1220; --accent-soft:#233463;
+  --good:#4cc38a; --good-soft:#173a2b; --bad:#ff8068; --bad-soft:#47201b;
+  --river:#1b3a50; --bankc:#27392b; --plank:#7a6245; --gate:#8ea0b6;
+  --c0:#ff6f55; --c1:#2cc4b8; --c2:#ffc94d; --c3:#9b7ee6;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background-color:var(--bg);
+  background-image:
+    linear-gradient(color-mix(in srgb,var(--line) 38%,transparent) 1px,transparent 1px),
+    linear-gradient(90deg,color-mix(in srgb,var(--line) 38%,transparent) 1px,transparent 1px);
+  background-size:28px 28px;
+  color:var(--ink);
+  font-family:var(--f-body); font-size:var(--fs-b); line-height:1.5;
+  padding-block:24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.app{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-0.01em}
+h1{font-size:var(--fs-xl);font-weight:800;line-height:1.05;letter-spacing:-0.025em}
+h2{font-size:var(--fs-m);font-weight:700}
+h3{font-size:var(--fs-b);font-weight:700}
+p{margin:0}
+.kicker{font-family:var(--f-mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 24px}
+.brand{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pips{display:flex;gap:8px;list-style:none;margin:0;padding:0}
+.pips li{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-family:var(--f-mono);font-size:13px;color:var(--muted);background:var(--surface)}
+.pips li.done{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.pips li.now{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:600}
+
+button,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);color:var(--on-accent);border:0;border-radius:12px;padding:12px 18px;font-weight:600;min-height:44px}
+.primary:hover{filter:brightness(1.08)}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-height:40px;color:var(--ink)}
+.ghost[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.ghost:hover{border-color:var(--accent)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.count{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+
+/* gate scene */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.stage-top{padding:16px 18px 14px;display:flex;flex-direction:column;gap:6px}
+.lead{max-width:62ch}
+.scene{position:relative;height:190px;overflow:hidden;border-block:1px solid var(--line);background:var(--surface-2)}
+.rmap{position:absolute;inset:0;width:100%;height:100%}
+.pl{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:28px;line-height:1}
+.rl{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.runner{position:absolute;left:7%;top:50%;transform:translate(-50%,-50%);font-size:32px;line-height:1;z-index:2}
+.chip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:6px 14px;border-radius:999px;font-weight:700;border:2px solid;z-index:3;background:var(--surface);white-space:nowrap}
+.chip.hw{color:var(--accent);border-color:var(--accent)}.chip.lc{color:var(--ink);border-color:var(--muted)}
+.load{padding:10px 18px 0;display:flex;flex-direction:column;gap:6px}.load .lh{font-size:12px;color:var(--muted)}
+.lrow{display:grid;grid-template-columns:96px 1fr 70px;gap:10px;align-items:center;font-size:13px}.lrow i{display:block;height:10px;border-radius:5px;min-width:3px;transition:width .3s}.lrow b{font-family:var(--f-mono);font-weight:500;text-align:right}
+.lrow .h{background:var(--accent)}.lrow .l{background:var(--muted)}
+.trip{display:flex;flex-direction:column;gap:1px;font-size:12.5px;line-height:1.35;white-space:nowrap;text-align:left}.trip.s{font-size:10.5px;line-height:1.3}
+.status{padding:10px 18px 14px;color:var(--muted);font-size:var(--fs-s);min-height:2.6em}
+
+/* shelf + notebook */
+.shelfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.bloop{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;transition:transform .12s,border-color .12s}
+.bloop .trip{align-items:flex-start}
+.bloop:hover{transform:translateY(-2px);border-color:var(--accent)}
+.bloop.sent{opacity:.25}
+body.busy .bloop{pointer-events:none}
+.banks{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.banks h3{display:flex;align-items:center;gap:6px;font-size:var(--fs-s);font-family:var(--f-mono);font-weight:500;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.banks .p h3{color:var(--accent)}.banks .f h3{color:var(--muted)}
+.bank-list{display:flex;flex-wrap:wrap;gap:6px;min-height:52px;padding:8px;border-radius:10px;background:var(--surface-2)}
+.mini{display:block;padding:4px 6px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+.mini .trip{align-items:flex-start}
+.mini.given{outline:2px dashed var(--accent);outline-offset:1px;border-radius:8px}
+.empty{color:var(--muted);font-size:var(--fs-s);align-self:center;padding-left:4px}
+
+/* rule builder */
+.guess{display:flex;flex-direction:column;gap:12px}
+.hint{color:var(--muted);font-size:var(--fs-s)}
+.clause{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.85fr) minmax(0,1.1fr);gap:8px}
+select{width:100%;min-width:0;min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+select:disabled{opacity:.5}
+.conn select{max-width:220px}
+.preview{font-family:var(--f-mono);font-size:var(--fs-s);padding:10px 12px;border-radius:10px;background:var(--surface-2);color:var(--ink);min-height:44px}
+.msg{font-size:var(--fs-s);min-height:2.6em}
+.msg.bad{color:var(--bad)}.msg.warn{color:var(--muted)}
+
+/* result + researcher */
+.result{display:flex;flex-direction:column;gap:16px}
+.result h2{font-size:var(--fs-l);font-weight:800;outline:none}
+.stq{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:10px;background:var(--surface-2);max-width:66ch}
+.stats,.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:0}
+.stats dt,.kv dt{color:var(--muted)}
+.stats dd,.kv dd{margin:0;font-family:var(--f-mono);font-size:14px}
+.coach{max-width:62ch;padding:12px 14px;border-radius:10px;background:var(--accent-soft)}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:var(--fs-s)}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-weight:500;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.rv{display:flex;flex-direction:column;gap:18px}
+.rvgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:22px}
+@media (max-width:860px){.rvgrid{grid-template-columns:minmax(0,1fr)}}
+.rv h3{margin-bottom:8px}
+.rv ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:80ch}
+textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);resize:vertical}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <p class="kicker">Rule-finding puzzle · route selection edition</p>
+      <h1>Hidden Gate: Route Choice</h1>
+    </div>
+    <ol class="pips" id="pips" aria-label="Gate progress"></ol>
+    <button type="button" class="ghost" id="rvToggle" aria-pressed="false" aria-controls="rv">Researcher view</button>
+  </header>
+
+  <main id="play">
+    <div class="grid">
+      <div class="col">
+        <section class="stage" aria-label="The route map">
+          <div class="stage-top">
+            <p class="kicker" id="gateLabel">Gate 1 of 5</p>
+            <p class="lead">A navigation router follows one secret rule to pick a route for every trip: the highway or local streets. Send trips one at a time, see which road each one takes and how busy each road gets, then write the rule.</p>
+          </div>
+          <div class="scene" id="scene">
+            <svg class="rmap" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+              <path d="M7 50H22M78 50H93" fill="none" stroke="#8f9aa8" stroke-width="10" vector-effect="non-scaling-stroke"/>
+              <path d="M22 50C30 50 30 76 40 76H60C70 76 70 50 78 50" fill="none" stroke="#8f9aa8" stroke-width="10" vector-effect="non-scaling-stroke"/>
+              <path d="M22 50C30 50 30 24 40 24H60C70 24 70 50 78 50" fill="none" stroke="#4a5b70" stroke-width="22" vector-effect="non-scaling-stroke"/>
+              <path d="M40 24H60" fill="none" stroke="#f4efe2" stroke-width="2" stroke-dasharray="8 6" vector-effect="non-scaling-stroke"/>
+            </svg>
+            <span class="pl" style="left:6%">🏠</span><span class="pl" style="left:94%">🏢</span>
+            <span class="rl" style="top:6px">Highway</span><span class="rl" style="bottom:6px">Local streets</span>
+            <div class="runner" id="runner" hidden>🚗</div>
+            <div class="chip" id="chip" hidden></div>
+          </div>
+          <div class="load" id="load" aria-live="polite"></div>
+          <p class="status" id="stageStatus" role="status" aria-live="polite">Pick a trip below to see which route the router chooses.</p>
+        </section>
+
+        <section class="card" aria-label="Trips waiting for a route">
+          <div class="row"><h2>Trips waiting for a route</h2><span class="count" id="shelfCount"></span></div>
+          <div class="shelfgrid" id="shelf"></div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card" aria-label="Field notebook">
+          <div class="row"><h2>Field notebook</h2><span class="count" id="tested"></span></div>
+          <div class="banks">
+            <div class="p"><h3><span aria-hidden="true">🛣</span> Took the highway</h3><div class="bank-list" id="bankPass"></div></div>
+            <div class="f"><h3><span aria-hidden="true">🏘</span> Took local streets</h3><div class="bank-list" id="bankFail"></div></div>
+          </div>
+        </section>
+
+        <form class="card guess" id="guess" autocomplete="off">
+          <h2>Your guess at the rule</h2>
+          <p class="hint">The router picks the highway if…</p>
+          <div class="clause">
+            <select id="a1" aria-label="Feature"></select>
+            <select id="n1" aria-label="Is or is not"><option value="0">is</option><option value="1">is not</option></select>
+            <select id="v1" aria-label="Value" disabled></select>
+          </div>
+          <div class="conn">
+            <select id="op" aria-label="Add a second clue">
+              <option value="">No second clue</option>
+              <option value="and">AND (both must be true)</option>
+              <option value="or">OR (either can be true)</option>
+            </select>
+          </div>
+          <div class="clause" id="clause2" hidden>
+            <select id="a2" aria-label="Second feature"></select>
+            <select id="n2" aria-label="Is or is not"><option value="0">is</option><option value="1">is not</option></select>
+            <select id="v2" aria-label="Second value" disabled></select>
+          </div>
+          <div class="preview" id="preview">Your rule: not set yet</div>
+          <button type="submit" class="primary" id="check">Check my rule</button>
+          <p class="msg" id="msg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <section id="result" class="card result" hidden></section>
+
+  <section id="rv" class="card rv" hidden aria-label="Researcher view">
+    <h2>Researcher view</h2>
+    <div class="rvgrid">
+      <div>
+        <h3>Live session</h3>
+        <dl class="kv" id="rvLive"></dl>
+      </div>
+      <div>
+        <h3>How an action becomes evidence of CT</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>CT skill</th><th>Player does</th><th>Game logs</th><th>Proxy metric</th></tr></thead>
+            <tbody>
+              <tr><td>Decomposition</td><td>Splits four features into single questions</td><td>Features that differ between consecutive tests</td><td>One-change-at-a-time tests (%)</td></tr>
+              <tr><td>Pattern recognition</td><td>Spots what highway trips share and local-street trips lack</td><td>Whether each test could still split the rules left standing</td><td>Tests that narrowed the possibilities (%); redundant tests</td></tr>
+              <tr><td>Abstraction</td><td>Replaces a list of cases with one general rule</td><td>Submitted rule compared with the hidden rule on all 108 trips</td><td>Correct on first guess; equivalent rules accepted</td></tr>
+              <tr><td>Algorithmic thinking</td><td>Runs a repeatable test sequence</td><td>Order of tests and the draft rule at test time</td><td>Strategy label; confirming vs. challenging tests</td></tr>
+              <tr><td>Debugging</td><td>Fixes a wrong rule after a counterexample</td><td>Wrong guesses and draft edits after each</td><td>Wrong guesses per gate; draft edits</td></tr>
+              <tr><td>Transfer</td><td>Reuses the same logic on new features</td><td>Gate 3 and gate 5 share logic, no shared features</td><td>Tests at gate 5 vs. gate 3</td></tr>
+            <tr><td>ST: Choices to system load</td><td>Predicts which road a routing rule overloads when all 108 trip types are on the road</td><td>Road check answer after each gate; trips per road for each rule</td><td>Road checks correct (of 5)</td></tr>
+              <tr><td>ST: Rule structure and load</td><td>Sees that AND rules send fewer trips to the highway than OR rules</td><td>Road check outcomes by gate (gate 3 AND vs gate 4 OR)</td><td>Correct on gates 3 and 4</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>Does it really measure CT? Open questions</h3>
+      <ul>
+        <li>Every metric above is a behavioral proxy. None is shown to be CT until it is checked against something outside the game.</li>
+        <li>Content check: ask two or three CT researchers to map each metric to a CT definition and mark the ones that do not fit.</li>
+        <li>Convergent check: compare gate scores with a validated CT test or Bebras-style items from the same players.</li>
+        <li>Think-aloud check: watch five players and confirm that "one change at a time" reflects intent, not luck.</li>
+        <li>Reliability: gates 3 and 5 have the same logic, so a player's tests should be similar on both. Large gaps point to feature difficulty or noise.</li>
+        <li>Systems-thinking check: the road check has three choices, so guessing succeeds one time in three. Use think-aloud to see whether players reason from the rule, and compare with an outside systems-thinking measure.</li>
+        <li>Confounds to rule out: lucky guesses, prior Mastermind-style experience, emoji reading, prior route-planning experience, and attention.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Session log</h3>
+      <textarea id="logText" rows="8" readonly aria-label="Session log as JSON"></textarea>
+      <div class="btnrow" style="margin-top:10px"><button type="button" class="ghost" id="copyLog">Copy log as JSON</button><span class="hint" id="copyNote"></span></div>
+    </div>
+  </section>
+</div>
+
+<script id="logic">
+const ATTRS=[
+  {key:'time',name:'Time of day',values:['morning rush','midday','evening rush','night']},
+  {key:'weather',name:'Weather',values:['clear','rain','snow']},
+  {key:'trip',name:'Trip length',values:['short','medium','long']},
+  {key:'prio',name:'Priority',values:['speed','low cost','few turns']}
+];
+const Logic=(function(){
+  const ALL=[];
+  for(let c=0;c<4;c++)for(let e=0;e<3;e++)for(let h=0;h<3;h++)for(let f=0;f<3;f++)ALL.push([c,e,h,f]);
+  const N=ALL.length;
+  const evalLit=(L,x)=>((x[L.a]===L.v)!==L.neg);
+  const evalRule=(r,x)=>r.op==='lit'?evalLit(r.p,x):r.op==='and'?(evalLit(r.p,x)&&evalLit(r.q,x)):(evalLit(r.p,x)||evalLit(r.q,x));
+  const truth=r=>{const t=new Uint8Array(N);for(let i=0;i<N;i++)t[i]=evalRule(r,ALL[i])?1:0;return t;};
+  const litText=L=>ATTRS[L.a].name+' '+(L.neg?'is not':'is')+' '+ATTRS[L.a].values[L.v];
+  const ruleText=r=>r.op==='lit'?litText(r.p):litText(r.p)+' '+r.op.toUpperCase()+' '+litText(r.q);
+  const ham=(i,j)=>{let d=0;for(let k=0;k<4;k++)if(ALL[i][k]!==ALL[j][k])d++;return d;};
+  const rnd=n=>Math.floor(Math.random()*n);
+  const shuffle=a=>{const b=a.slice();for(let i=b.length-1;i>0;i--){const j=rnd(i+1);const t=b[i];b[i]=b[j];b[j]=t;}return b;};
+  const pickLit=(a,neg)=>({a:a,v:rnd(ATTRS[a].values.length),neg:!!neg});
+
+  // Every rule a player could reasonably write: one clue, or two clues on different features joined by AND / OR.
+  const lits=[];
+  ATTRS.forEach((A,a)=>A.values.forEach((_,v)=>{lits.push({a:a,v:v,neg:false});lits.push({a:a,v:v,neg:true});}));
+  const CANDS=(function(){
+    const seen=new Map();
+    const add=r=>{const tt=truth(r);const k=tt.join('');if(!seen.has(k))seen.set(k,{r:r,tt:tt});};
+    lits.forEach(p=>add({op:'lit',p:p}));
+    lits.forEach(p=>lits.forEach(q=>{if(p.a<q.a){add({op:'and',p:p,q:q});add({op:'or',p:p,q:q});}}));
+    return Array.from(seen.values());
+  })();
+
+  function makeRule(idx){
+    if(idx===0)return{op:'lit',p:pickLit(rnd(4),false)};
+    if(idx===1)return{op:'lit',p:pickLit(rnd(4),true)};
+    const a=rnd(4);let b=rnd(3);if(b>=a)b++;
+    return{op:idx===3?'or':'and',p:pickLit(Math.min(a,b),false),q:pickLit(Math.max(a,b),false)};
+  }
+  function makeTransferRule(prev){
+    const used=[prev.p.a,prev.q.a];
+    const rest=[0,1,2,3].filter(a=>used.indexOf(a)<0);
+    return{op:'and',p:pickLit(rest[0],false),q:pickLit(rest[1],false)};
+  }
+  // A hand always holds crossers, turned-back bloops, and near-misses (one feature away from a crosser).
+  function dealHand(rule,exclude,nPass,nFail){
+    const tt=truth(rule);const pass=[],fail=[];
+    for(let i=0;i<N;i++){if(exclude.has(i))continue;(tt[i]?pass:fail).push(i);}
+    const P=shuffle(pass).slice(0,nPass);const F=shuffle(fail);
+    const picked=[];
+    for(const p of P){
+      if(picked.length>=Math.floor(nFail/2))break;
+      const nm=F.find(f=>picked.indexOf(f)<0&&ham(p,f)===1);
+      if(nm!==undefined)picked.push(nm);
+    }
+    for(const f of F){if(picked.length>=nFail)break;if(picked.indexOf(f)<0)picked.push(f);}
+    return shuffle(P.concat(picked));
+  }
+  function isInformative(cands,id){let s=0;for(const c of cands)s+=c.tt[id];return s>0&&s<cands.length;}
+  function narrow(cands,id,pass){const v=pass?1:0;return cands.filter(c=>c.tt[id]===v);}
+  function strategy(m){
+    if(m.tests<2)return{key:'quick',label:'Solved with very few tests'};
+    const eff=m.informative/m.tests>=0.7;
+    const sys=m.ctrlDen>0&&m.controlled/m.ctrlDen>=0.5;
+    if(sys&&eff)return{key:'sys_eff',label:'Systematic and efficient'};
+    if(sys)return{key:'sys',label:'Systematic, with some redundant tests'};
+    if(eff)return{key:'eff',label:'Efficient without one-change-at-a-time tests'};
+    return{key:'explore',label:'Exploratory: many tests repeated what was known'};
+  }
+  function describe(x){const A=ATTRS;return A[0].values[x[0]]+', '+A[1].values[x[1]]+' weather, '+A[2].values[x[2]]+' trip, priority: '+A[3].values[x[3]];}
+  return{ALL:ALL,N:N,CANDS:CANDS,evalRule:evalRule,truth:truth,ruleText:ruleText,ham:ham,rnd:rnd,makeRule:makeRule,makeTransferRule:makeTransferRule,dealHand:dealHand,isInformative:isInformative,narrow:narrow,strategy:strategy,describe:describe};
+})();
+</script>
+
+<script id="ui">
+(function(){
+'use strict';
+const {ALL,N,CANDS,evalRule,truth,ruleText,ham,rnd,makeRule,makeTransferRule,dealHand,isInformative,narrow,strategy,describe}=Logic;
+const $=s=>document.querySelector(s);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const OUT='#1d2433';
+const LEVELS=[
+  {name:'One feature'},
+  {name:'Everything but one feature'},
+  {name:'Both together (AND)'},
+  {name:'Either one (OR)'},
+  {name:'Both together, new features (transfer)'}
+];
+const COACH={
+  quick:'You solved this gate with very few tests.',
+  sys_eff:'Most of your tests changed a single feature, so you could see what each feature did on its own. That is decomposition.',
+  sys:'You changed one feature at a time, which isolates its effect. A few tests repeated what the notebook already showed.',
+  eff:'Your tests kept cutting down the possibilities even when several features changed at once. That is pattern recognition at work.',
+  explore:'Many tests repeated what you already knew. Next time, pick a trip that settles a question the notebook cannot answer yet.'
+};
+let S;
+
+function newSession(){
+  S={sid:Math.random().toString(36).slice(2,8),started:new Date().toISOString(),lvl:0,view:'play',busy:false,L:null,done:[],log:[],rule3:null};
+}
+function logEv(type,data){
+  const L=S.L;
+  S.log.push(Object.assign({gate:S.lvl+1,t:L?Math.round(performance.now()-L.t0):0,type:type},data||{}));
+}
+
+/* ---------- drawing ---------- */
+const EMO=[['🌅','🕛','🌆','🌙'],['🌤','🌧','❄️'],['📍','📍📍','📍📍📍'],['⚡','💲','🧭']];
+const DISP=[v=>v,v=>v,v=>v+' trip',v=>'wants '+v];
+function bloop(x,size){return '<span class="trip'+(size<60?' s':'')+'">'+ATTRS.map((A,k)=>'<span>'+EMO[k][x[k]]+' '+DISP[k](A.values[x[k]])+'</span>').join('')+'</span>';}
+
+/* ---------- levels ---------- */
+function startLevel(idx){
+  S.lvl=idx;S.view='play';S.busy=false;
+  let rule;
+  if(idx===4)rule=makeTransferRule(S.rule3);else rule=makeRule(idx);
+  if(idx===2)S.rule3=rule;
+  const L={idx:idx,rule:rule,tt:truth(rule),hand:dealHand(rule,new Set(),4,8),tested:[],cands:CANDS.slice(),
+    t0:performance.now(),prev:null,wrong:0,guesses:0,drafts:0,tests:0,informative:0,controlled:0,ctrlDen:0,draftTests:0,draftPass:0};
+  S.L=L;
+  logEv('level_start',{rule:ruleText(rule),structure:LEVELS[idx].name,hand:L.hand.slice()});
+  resetBuilder();
+  $('#stageStatus').textContent='Pick a trip below to see which route the router chooses.';
+  document.body.classList.remove('busy');
+  render();
+}
+
+function render(){
+  renderPips();
+  const play=S.view==='play';
+  $('#play').hidden=!play;
+  $('#result').hidden=play;
+  if(play){
+    $('#gateLabel').textContent='Gate '+(S.lvl+1)+' of 5';
+    renderShelf();renderBanks();
+  }else renderResult();
+  renderRV();
+}
+function renderPips(){
+  $('#pips').innerHTML=LEVELS.map((_,i)=>{
+    const cls=i<S.done.length?'done':(i===S.lvl&&S.view==='play'?'now':'');
+    return '<li class="'+cls+'"'+(i===S.lvl&&S.view==='play'?' aria-current="step"':'')+'><span class="sr">Gate </span>'+(i+1)+'</li>';
+  }).join('');
+}
+function renderShelf(){
+  const L=S.L;
+  $('#shelf').innerHTML=L.hand.map(id=>'<button type="button" class="bloop" data-id="'+id+'" aria-label="Send '+describe(ALL[id])+'" title="'+describe(ALL[id])+'">'+bloop(ALL[id],72)+'</button>').join('');
+  $('#shelfCount').textContent=L.hand.length+' waiting';
+}
+function renderBanks(){
+  const L=S.L;
+  const mk=t=>'<span class="mini'+(t.given?' given':'')+'" role="img" aria-label="'+describe(ALL[t.id])+(t.given?' (shown by the gate)':'')+'" title="'+describe(ALL[t.id])+(t.given?' (shown by the gate)':'')+'">'+bloop(ALL[t.id],44)+'</span>';
+  const p=L.tested.filter(t=>t.pass),f=L.tested.filter(t=>!t.pass);
+  $('#bankPass').innerHTML=p.length?p.map(mk).join(''):'<span class="empty">None yet</span>';
+  $('#bankFail').innerHTML=f.length?f.map(mk).join(''):'<span class="empty">None yet</span>';
+  $('#tested').textContent=L.tested.length+' tested';
+  const tot=p.length+f.length,pc=tot?Math.round(100*p.length/tot):0;
+  $('#load').innerHTML='<p class="lh">How busy each road is: share of the trips you have sent so far</p><div class="lrow"><span>🛣 Highway</span><i class="h" style="width:'+pc+'%"></i><b>'+p.length+' trips</b></div><div class="lrow"><span>🏘 Local streets</span><i class="l" style="width:'+(tot?100-pc:0)+'%"></i><b>'+f.length+' trips</b></div>';
+}
+
+/* ---------- sending a bloop ---------- */
+async function animate(x,pass){
+  const run=$('#runner'),chip=$('#chip'),status=$('#stageStatus'),T=reduce?0:380;
+  const mv=(l,t,o)=>{run.style.transition=reduce?'none':'left '+T+'ms ease-in-out, top '+T+'ms ease-in-out, opacity '+T+'ms';run.style.left=l;run.style.top=t;if(o!==undefined)run.style.opacity=o;};
+  run.style.transition='none';run.style.left='7%';run.style.top='50%';run.style.opacity='1';run.hidden=false;void run.offsetWidth;
+  status.textContent='The router is choosing a route…';
+  mv('22%','50%');await sleep(T+80);
+  mv('50%',pass?'24%':'76%');
+  chip.className='chip '+(pass?'hw':'lc');chip.textContent=pass?'🛣 Highway':'🏘 Local streets';chip.hidden=false;
+  status.textContent=pass?'The router sent this trip on the highway.':'The router sent this trip on local streets.';
+  await sleep(reduce?650:T+120);
+  mv('78%','50%');await sleep(T+60);
+  mv('93%','50%',0);await sleep(T+60);
+  run.hidden=true;chip.hidden=true;
+}
+
+async function sendBloop(id,given){
+  const L=S.L;
+  if(S.busy||S.view!=='play')return;
+  S.busy=true;document.body.classList.add('busy');
+  const x=ALL[id],pass=!!L.tt[id];
+  const btn=$('#shelf .bloop[data-id="'+id+'"]');if(btn)btn.classList.add('sent');
+  setMsg('','');
+  if(!given){
+    const d=draftRule();
+    const pred=d?(evalRule(d,x)?1:0):null;
+    const informative=isInformative(L.cands,id);
+    const controlled=L.prev!==null?ham(L.prev,id)===1:null;
+    L.tests++;if(informative)L.informative++;
+    if(controlled!==null){L.ctrlDen++;if(controlled)L.controlled++;}
+    if(pred!==null){L.draftTests++;if(pred===1)L.draftPass++;}
+    L.prev=id;
+    logEv('test',{bloop:id,features:describe(x),outcome:pass?'highway':'local_streets',informative:informative,one_change:controlled,draft_prediction:pred===null?null:(pred?'cross':'back'),rules_left_before:L.cands.length});
+  }else{
+    logEv('counterexample',{bloop:id,features:describe(x),outcome:pass?'highway':'local_streets',rules_left_before:L.cands.length});
+  }
+  L.cands=narrow(L.cands,id,pass);
+  L.tested.push({id:id,pass:pass,given:!!given});
+  L.hand=L.hand.filter(h=>h!==id);
+  await animate(x,pass);
+  S.busy=false;document.body.classList.remove('busy');
+  if(L.hand.length===0){
+    const used=new Set(L.tested.map(t=>t.id));
+    L.hand=dealHand(L.rule,used,3,5);
+    logEv('refill',{hand:L.hand.slice()});
+    $('#stageStatus').textContent='More trips have arrived.';
+  }
+  render();
+}
+
+/* ---------- rule builder ---------- */
+function fillA(i,skip){
+  const sel=$('#a'+i);
+  sel.innerHTML='<option value="">Feature…</option>'+ATTRS.map((A,k)=>String(k)===skip?'':'<option value="'+k+'">'+A.name+'</option>').join('');
+}
+function setValues(i){
+  const a=$('#a'+i).value,v=$('#v'+i);
+  if(a===''){v.innerHTML='<option value="">Value…</option>';v.disabled=true;return;}
+  v.disabled=false;
+  v.innerHTML='<option value="">Value…</option>'+ATTRS[+a].values.map((x,k)=>'<option value="'+k+'">'+x+'</option>').join('');
+}
+function rebuildA2(){
+  const a1=$('#a1').value,cur=$('#a2').value;
+  fillA(2,a1);
+  if(cur!==''&&cur!==a1)$('#a2').value=cur;
+  else{$('#a2').value='';setValues(2);}
+}
+function readLit(i){
+  const a=$('#a'+i).value,v=$('#v'+i).value;
+  if(a===''||v==='')return null;
+  return{a:+a,v:+v,neg:$('#n'+i).value==='1'};
+}
+function draftRule(){
+  const p=readLit(1);if(!p)return null;
+  const op=$('#op').value;if(!op)return{op:'lit',p:p};
+  const q=readLit(2);if(!q)return null;
+  return{op:op,p:p,q:q};
+}
+function setMsg(text,kind){const m=$('#msg');m.textContent=text;m.className='msg '+(kind||'');}
+function updatePreview(){
+  const r=draftRule();
+  $('#preview').textContent=r?'Your rule: the router picks the highway if '+ruleText(r):'Your rule: not set yet';
+}
+function resetBuilder(){
+  fillA(1,'');fillA(2,'');
+  $('#n1').value='0';$('#n2').value='0';$('#op').value='';
+  $('#clause2').hidden=true;
+  setValues(1);setValues(2);updatePreview();setMsg('','');
+}
+$('#guess').addEventListener('change',e=>{
+  if(S.view!=='play')return;
+  const id=e.target.id;
+  if(id==='a1'){setValues(1);rebuildA2();}
+  else if(id==='a2'){setValues(2);}
+  else if(id==='op'){$('#clause2').hidden=!e.target.value;}
+  updatePreview();
+  const r=draftRule();
+  if(r)S.L.drafts++;
+  logEv('draft',{rule:r?ruleText(r):'incomplete'});
+  setMsg('','');
+});
+$('#guess').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(S.busy||S.view!=='play')return;
+  const L=S.L,r=draftRule();
+  if(!r){setMsg('Finish the first clue: choose a feature and a value.','warn');return;}
+  const gt=truth(r),diff=[];
+  for(let i=0;i<N;i++)if(gt[i]!==L.tt[i])diff.push(i);
+  L.guesses++;
+  const correct=diff.length===0;
+  logEv('guess',{rule:ruleText(r),correct:correct,attempt:L.guesses,bloops_misclassified:diff.length});
+  if(correct){finishLevel();return;}
+  L.wrong++;
+  const seen=new Set(L.tested.map(t=>t.id));
+  const fresh=diff.filter(i=>!seen.has(i));
+  if(fresh.length){
+    const inHand=fresh.filter(i=>L.hand.indexOf(i)>=0);
+    const pool=inHand.length?inHand:fresh;
+    const id=pool[rnd(pool.length)];
+    setMsg(L.tt[id]?'Not quite. Your rule says this trip would take local streets, but the router sends it on the highway.':'Not quite. Your rule says this trip would take the highway, but the router sends it on local streets.','bad');
+    await sendBloop(id,true);
+  }else{
+    setMsg('Not quite. Your rule disagrees with '+diff.length+' trip'+(diff.length===1?'':'s')+' you could already see in the notebook.','bad');
+  }
+});
+$('#shelf').addEventListener('click',e=>{
+  const b=e.target.closest('.bloop');
+  if(b)sendBloop(+b.dataset.id,false);
+});
+
+/* ---------- finishing ---------- */
+const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+function finishLevel(){
+  const L=S.L,secs=Math.round((performance.now()-L.t0)/1000);
+  const st=strategy({tests:L.tests,informative:L.informative,controlled:L.controlled,ctrlDen:L.ctrlDen});
+  const sum={gate:L.idx+1,structure:LEVELS[L.idx].name,rule:ruleText(L.rule),tests:L.tests,narrowing_tests:L.informative,redundant_tests:L.tests-L.informative,one_change_tests:L.controlled,one_change_possible:L.ctrlDen,wrong_guesses:L.wrong,draft_edits:L.drafts,draft_confirming_tests:L.draftPass,draft_tests:L.draftTests,seconds:secs,strategy:st.label,strategy_key:st.key};
+  S.done.push(sum);L.st=stSetup(L);
+  logEv('level_end',sum);
+  S.view='result';
+  render();
+}
+
+function stSetup(L){let h=0;for(let i=0;i<N;i++)if(L.tt[i])h++;return{h:h,answered:false};}
+const ST_NOTE='When a rule sends most trips to the same road, that road jams while the other sits nearly empty. A rule can look sensible for one driver and still overload a road when every driver follows it. Rules that need several conditions at once (AND) send fewer trips to the highway than either-or rules (OR).';
+function stBlock(d){
+  const s=S.L.st;
+  if(!s.answered)return '<div class="stq"><h3>Road check: which road gets crowded?</h3><p>Imagine one of every kind of trip (108 in all) is on the road at the same time, and every driver follows this router rule: <b>highway if '+d.rule+'</b>, otherwise local streets.</p><p>Which road carries more trips?</p><div class="btnrow"><button type="button" class="ghost" data-st="H">The highway</button><button type="button" class="ghost" data-st="L">Local streets</button><button type="button" class="ghost" data-st="E">About equal (within about 10%)</button></div></div>';
+  return '<p class="coach"><strong>'+(s.ok?'Right.':'Not quite.')+'</strong> The rule sends '+s.h+' of the 108 trips on the highway and '+(108-s.h)+' on local streets. '+ST_NOTE+'</p><div class="btnrow">'+(d.gate===5?'<button type="button" class="primary" data-act="final">See my summary</button>':'<button type="button" class="primary" data-act="next">Go to gate '+(d.gate+1)+'</button>')+'</div>';
+}
+function answerST(c){
+  const s=S.L.st,df=2*s.h-108,right=Math.abs(df)<=12?'E':(df>0?'H':'L');
+  s.answered=true;s.ok=(c===right);
+  S.done[S.done.length-1].st_correct=s.ok;
+  logEv('road_check',{choice:c,correct_answer:right,ok:s.ok,highway_trips:s.h,local_trips:108-s.h});
+  render();
+}
+function renderResult(){
+  const d=S.done[S.done.length-1],box=$('#result');
+  if(S.view==='result'){
+    box.innerHTML='<p class="kicker">Gate '+d.gate+' cleared</p>'
+      +'<h2 id="resultTitle" tabindex="-1">The rule: the router picks the highway if '+d.rule+'</h2>'
+      +'<dl class="stats">'
+      +'<dt>Tests sent</dt><dd>'+d.tests+'</dd>'
+      +'<dt>Tests that narrowed the possibilities</dt><dd>'+d.narrowing_tests+' of '+d.tests+'</dd>'
+      +'<dt>One-change-at-a-time tests</dt><dd>'+d.one_change_tests+' of '+d.one_change_possible+'</dd>'
+      +'<dt>Wrong guesses</dt><dd>'+d.wrong_guesses+'</dd>'
+      +'<dt>Time</dt><dd>'+fmt(d.seconds)+'</dd></dl>'
+      +'<p class="coach"><strong>'+d.strategy+'.</strong> '+COACH[d.strategy_key]+'</p>'
+      +stBlock(d);
+  }else{
+    const g3=S.done[2],g5=S.done[4];
+    const cmp=g5.tests<g3.tests?'Fewer tests the second time suggests you reused what you learned.':g5.tests===g3.tests?'You needed the same number of tests both times.':'More tests the second time. The same logic can feel harder when the features change.';
+    box.innerHTML='<p class="kicker">All five gates cleared</p>'
+      +'<h2 id="resultTitle" tabindex="-1">How you played</h2>'
+      +'<div class="tablewrap"><table><thead><tr><th>Gate</th><th>Rule</th><th>Tests</th><th>Narrowing</th><th>One change</th><th>Wrong</th><th>Time</th><th>Road check</th></tr></thead><tbody>'
+      +S.done.map(x=>'<tr><td>'+x.gate+'</td><td>'+x.rule+'</td><td>'+x.tests+'</td><td>'+x.narrowing_tests+'/'+x.tests+'</td><td>'+x.one_change_tests+'/'+x.one_change_possible+'</td><td>'+x.wrong_guesses+'</td><td>'+fmt(x.seconds)+'</td><td>'+(x.st_correct?'✓':'✕')+'</td></tr>').join('')
+      +'</tbody></table></div>'
+      +'<p class="coach">Gates 3 and 5 used the same logic, two features that must both match, with no features in common. You needed '+g3.tests+' tests at gate 3 and '+g5.tests+' at gate 5. '+cmp+'</p>'
+      +'<p class="coach">Road checks correct: '+S.done.filter(x=>x.st_correct).length+' of 5. Each trip choice looks small, but together the choices decide which road is crowded.</p><div class="btnrow"><button type="button" class="primary" data-act="again">Play again</button><button type="button" class="ghost" data-act="copy">Copy session log</button><span class="hint" id="copyNote2"></span></div>';
+  }
+  const t=$('#resultTitle');if(t)t.focus();
+}
+$('#result').addEventListener('click',e=>{
+  const q=e.target.closest('[data-st]');if(q){answerST(q.dataset.st);return;}
+  const a=e.target.closest('[data-act]');if(!a)return;
+  if(a.dataset.act==='final'){S.view='final';render();return;}
+  if(a.dataset.act==='next')startLevel(S.lvl+1);
+  else if(a.dataset.act==='again'){newSession();startLevel(0);}
+  else if(a.dataset.act==='copy')copyLog($('#copyNote2'));
+});
+
+/* ---------- researcher view ---------- */
+function renderRV(){
+  const L=S.L;if(!L)return;
+  const rows=[
+    ['Hidden rule','The router picks the highway if '+ruleText(L.rule)],
+    ['Rule logic',LEVELS[L.idx].name],
+    ['Tests sent',String(L.tests)],
+    ['Narrowed the possibilities',L.informative+' of '+L.tests],
+    ['Redundant tests',String(L.tests-L.informative)],
+    ['One-change-at-a-time',L.controlled+' of '+L.ctrlDen],
+    ['Tests the draft rule predicted would cross',L.draftPass+' of '+L.draftTests],
+    ['Wrong guesses',String(L.wrong)],
+    ['Draft edits',String(L.drafts)],
+    ['Rule patterns still consistent',L.cands.length+' of '+CANDS.length]
+  ];
+  $('#rvLive').innerHTML=rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+r[1]+'</dd>').join('');
+  $('#logText').value=JSON.stringify(exportObj(),null,1);
+}
+function exportObj(){return{game:'Hidden Gate: Route Choice',version:2,session:S.sid,started:S.started,gates:S.done,events:S.log};}
+async function copyLog(noteEl){
+  const ta=$('#logText');ta.value=JSON.stringify(exportObj(),null,1);
+  let ok=false;
+  try{await navigator.clipboard.writeText(ta.value);ok=true;}
+  catch(_){try{ta.focus();ta.select();ok=document.execCommand('copy');}catch(__){}}
+  const msg=ok?'Copied the session log.':'Select the log text in Researcher view and copy it.';
+  if(noteEl)noteEl.textContent=msg;
+}
+$('#copyLog').addEventListener('click',()=>copyLog($('#copyNote')));
+$('#rvToggle').addEventListener('click',e=>{
+  const open=$('#rv').hidden;
+  $('#rv').hidden=!open;e.currentTarget.setAttribute('aria-pressed',String(open));
+});
+function applyHash(){
+  const participant=location.hash==='#play';
+  $('#rvToggle').hidden=participant;
+  if(participant){$('#rv').hidden=true;$('#rvToggle').setAttribute('aria-pressed','false');}
+}
+window.addEventListener('hashchange',applyHash);
+
+newSession();startLevel(0);applyHash();
+})();
+</script>
+
+</body></html>
