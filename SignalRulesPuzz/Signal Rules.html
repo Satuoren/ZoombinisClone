@@ -1,0 +1,889 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Signal Rules</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: same field-notebook page as Hidden Gate. Left column is the street (map, stats, queue graph). Right column is the rule builder, the prediction, and the run log. Researcher view opens underneath. */
+:root{
+  --bg:#edf1f4; --surface:#fbfcfd; --surface-2:#e4eaef; --ink:#14202e; --muted:#53647a; --line:#c6d1db;
+  --accent:#2850c8; --on-accent:#ffffff; --accent-soft:#dbe4fb;
+  --good:#17794f; --good-soft:#d6efe3; --bad:#b8372a; --bad-soft:#f8dcd7;
+  --grass:#d3dfcf; --road:#8f9aa8; --lane:#f4efe2; --pole:#2a3442;
+  --sig-g:#1e9e5a; --sig-y:#e8a317; --sig-r:#d23f31;
+  --c0:#e8583f; --c1:#1aa59a; --c2:#f0b429; --c3:#7c5cc4; --c4:#2f7fd0; --c5:#b0569a;
+  --f-display:'Bricolage Grotesque',system-ui,sans-serif;
+  --f-body:'Instrument Sans',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --fs-s:13px; --fs-b:15px; --fs-m:18px; --fs-l:24px; --fs-xl:clamp(30px,5vw,42px);
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1822; --surface:#16222f; --surface-2:#1e2d3d; --ink:#e6edf4; --muted:#9fb0c2; --line:#2c3e51;
+    --accent:#86a2ff; --on-accent:#0b1220; --accent-soft:#233463;
+    --good:#4cc38a; --good-soft:#173a2b; --bad:#ff8068; --bad-soft:#47201b;
+    --grass:#22332a; --road:#3d4b5b; --lane:#9aa6b2; --pole:#0b1118;
+    --sig-g:#3ed184; --sig-y:#ffc23d; --sig-r:#ff6a59;
+    --c0:#ff6f55; --c1:#2cc4b8; --c2:#ffc94d; --c3:#9b7ee6; --c4:#5aa6f0; --c5:#d77cc0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1822; --surface:#16222f; --surface-2:#1e2d3d; --ink:#e6edf4; --muted:#9fb0c2; --line:#2c3e51;
+  --accent:#86a2ff; --on-accent:#0b1220; --accent-soft:#233463;
+  --good:#4cc38a; --good-soft:#173a2b; --bad:#ff8068; --bad-soft:#47201b;
+  --grass:#22332a; --road:#3d4b5b; --lane:#9aa6b2; --pole:#0b1118;
+  --sig-g:#3ed184; --sig-y:#ffc23d; --sig-r:#ff6a59;
+  --c0:#ff6f55; --c1:#2cc4b8; --c2:#ffc94d; --c3:#9b7ee6; --c4:#5aa6f0; --c5:#d77cc0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background-color:var(--bg);
+  background-image:
+    linear-gradient(color-mix(in srgb,var(--line) 38%,transparent) 1px,transparent 1px),
+    linear-gradient(90deg,color-mix(in srgb,var(--line) 38%,transparent) 1px,transparent 1px);
+  background-size:28px 28px;
+  color:var(--ink);
+  font-family:var(--f-body); font-size:var(--fs-b); line-height:1.5;
+  padding-block:24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.app{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-0.01em}
+h1{font-size:var(--fs-xl);font-weight:800;line-height:1.05;letter-spacing:-0.025em}
+h2{font-size:var(--fs-m);font-weight:700}
+h3{font-size:var(--fs-b);font-weight:700}
+p{margin:0}
+.kicker{font-family:var(--f-mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 24px}
+.brand{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pips{display:flex;gap:8px;list-style:none;margin:0;padding:0}
+.pips button{width:32px;height:32px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-family:var(--f-mono);font-size:13px;color:var(--muted);background:var(--surface);padding:0}
+.pips button:hover{border-color:var(--accent)}
+.pips button.done{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.pips button.now{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:600}
+.pips button.done.now{box-shadow:0 0 0 3px var(--accent-soft)}
+
+button,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.5}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);color:var(--on-accent);border:0;border-radius:12px;padding:12px 18px;font-weight:600;min-height:44px}
+.primary:hover:not(:disabled){filter:brightness(1.08)}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-height:40px;color:var(--ink)}
+.ghost[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.ghost:hover:not(:disabled){border-color:var(--accent)}
+.small{min-height:32px;padding:4px 10px;font-size:var(--fs-s)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.count{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+
+/* street scene */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.stage-top{padding:16px 18px 14px;display:flex;flex-direction:column;gap:8px}
+.lead{max-width:62ch}
+.goal{font-size:var(--fs-s);padding:8px 12px;border-radius:10px;background:var(--surface-2);max-width:62ch}
+.goal b{font-weight:600}
+.scene{border-block:1px solid var(--line);background:var(--grass)}
+.scene svg{display:block;width:100%;height:auto}
+.road{fill:var(--road)}
+.lane{stroke:var(--lane);stroke-width:2;stroke-dasharray:10 8;fill:none}
+.lbl{font-family:var(--f-mono);font-size:13px;fill:var(--ink);font-weight:500}
+.lbl.m{fill:var(--muted);font-size:12px}
+.badge{font-family:var(--f-mono);font-size:12px;font-weight:600;fill:var(--bad)}
+.ltr{font-family:var(--f-display);font-weight:800;font-size:15px;fill:var(--on-accent)}
+.pole{fill:var(--pole)}
+.lamp-g{fill:var(--sig-g)}.lamp-y{fill:var(--sig-y)}.lamp-r{fill:var(--sig-r)}
+.stop-g{stroke:var(--sig-g)}.stop-y{stroke:var(--sig-y)}.stop-r{stroke:var(--sig-r)}
+.full{fill:var(--bad);opacity:.18}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 18px 0}
+.stat{background:var(--surface-2);border-radius:10px;padding:8px 10px;min-width:0}
+.stat span{display:block;font-size:12px;color:var(--muted);line-height:1.3}
+.stat b{font-family:var(--f-mono);font-weight:500;font-size:18px}
+.stat.bad b{color:var(--bad)}
+@media (max-width:520px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.chartbox{padding:12px 18px 0}
+.chartbox .lh{font-size:12px;color:var(--muted);margin-bottom:4px}
+.chart{display:block;width:100%;height:auto}
+.axis{stroke:var(--line);stroke-width:1}
+.axt{font-family:var(--f-mono);font-size:10px;fill:var(--muted)}
+.capl{stroke:var(--bad);stroke-width:1;stroke-dasharray:4 4;opacity:.7}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.status{padding:10px 18px 14px;color:var(--muted);font-size:var(--fs-s);min-height:2.6em}
+.debrief{margin:0 18px 16px;padding:12px 14px;border-radius:10px;background:var(--bad-soft);display:flex;flex-direction:column;gap:6px;max-width:66ch}
+.debrief.ok{background:var(--good-soft)}
+.debrief h3{font-size:var(--fs-b)}
+
+/* rule builder */
+.guess{display:flex;flex-direction:column;gap:12px}
+.hint{color:var(--muted);font-size:var(--fs-s)}
+.clause{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.8fr) minmax(0,.9fr);gap:8px}
+select{width:100%;min-width:0;min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+select:disabled{opacity:.5}
+.conn select{max-width:240px}
+.preview{font-family:var(--f-mono);font-size:var(--fs-s);padding:10px 12px;border-radius:10px;background:var(--surface-2);color:var(--ink);min-height:44px}
+.msg{font-size:var(--fs-s);min-height:1.5em}
+.msg.bad{color:var(--bad)}
+.newsensor{font-size:var(--fs-s);padding:8px 12px;border-radius:10px;background:var(--accent-soft)}
+.sensors{margin:0;padding-left:18px;font-size:var(--fs-s);color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.choices{display:flex;flex-wrap:wrap;gap:8px}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;gap:0}
+.seg .ghost{border-radius:0;min-height:36px;padding:4px 12px;font-size:var(--fs-s)}
+.seg .ghost:first-child{border-radius:10px 0 0 10px}
+.seg .ghost:last-child{border-radius:0 10px 10px 0;margin-left:-1px}
+body.busy .guess select,body.busy .choices button,body.busy .pips button,body.busy .runs button{pointer-events:none;opacity:.55}
+
+/* run log */
+.runs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.runs li{padding:8px 10px;border-radius:10px;background:var(--surface-2);font-size:var(--fs-s);display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:start}
+.runs .mark{font-weight:700}
+.runs .mark.ok{color:var(--good)}.runs .mark.no{color:var(--bad)}
+.runs .rt{font-family:var(--f-mono);font-size:12px}
+.runs .meta{grid-column:2;color:var(--muted);font-size:12px}
+.empty{color:var(--muted);font-size:var(--fs-s)}
+
+/* result + researcher */
+.result{display:flex;flex-direction:column;gap:16px}
+.result h2{font-size:var(--fs-l);font-weight:800;outline:none}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-family:var(--f-mono);font-size:14px}
+.coach{max-width:66ch;padding:12px 14px;border-radius:10px;background:var(--accent-soft)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:var(--fs-s)}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-weight:500;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.rv{display:flex;flex-direction:column;gap:18px}
+.rvgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:22px}
+@media (max-width:860px){.rvgrid{grid-template-columns:minmax(0,1fr)}}
+.rv h3{margin-bottom:8px}
+.rv ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:80ch}
+textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);resize:vertical}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <p class="kicker">Rule-writing puzzle · mini-game 2</p>
+      <h1>Signal Rules</h1>
+    </div>
+    <ol class="pips" id="pips" aria-label="Levels"></ol>
+    <button type="button" class="ghost" id="rvToggle" aria-pressed="false" aria-controls="rv">Researcher view</button>
+  </header>
+
+  <main id="play">
+    <div class="grid">
+      <div class="col">
+        <section class="stage" aria-label="The street">
+          <div class="stage-top">
+            <p class="kicker" id="levelLabel">Level 1 of 5</p>
+            <p class="lead" id="brief"></p>
+            <p class="goal" id="goal"></p>
+          </div>
+          <div class="scene" id="scene" role="img" aria-label="Map of the street and its traffic lights"></div>
+          <div class="stats" aria-live="off">
+            <div class="stat"><span>Clock</span><b id="stClock">0:00</b></div>
+            <div class="stat"><span>Cars through</span><b id="stThrough">0</b></div>
+            <div class="stat" id="stTurnedBox"><span>Turned away</span><b id="stTurned">0</b></div>
+            <div class="stat" id="stWaitBox"><span>Average wait</span><b id="stWait">0.0 s</b></div>
+          </div>
+          <div class="chartbox">
+            <p class="lh" id="chartTitle">Cars waiting in each line over time</p>
+            <div id="chart"></div>
+            <div class="legend" id="legend"></div>
+          </div>
+          <p class="status" id="stageStatus" role="status" aria-live="polite"></p>
+          <div class="debrief" id="debrief" hidden></div>
+        </section>
+      </div>
+
+      <div class="col">
+        <form class="card guess" id="guess" autocomplete="off">
+          <h2>Your signal rule</h2>
+          <p class="newsensor" id="newSensor" hidden></p>
+          <p class="hint">Every light runs this same rule. A light switches the green to the other road when…</p>
+          <div class="clause">
+            <select id="s1" aria-label="Sensor"></select>
+            <select id="c1" aria-label="At least or at most"><option value="ge">at least</option><option value="le">at most</option></select>
+            <select id="v1" aria-label="Value" disabled></select>
+          </div>
+          <div class="conn">
+            <select id="op" aria-label="Add a second condition">
+              <option value="">No second condition</option>
+              <option value="and">AND (both must be true)</option>
+              <option value="or">OR (either one is enough)</option>
+            </select>
+          </div>
+          <div class="clause" id="clause2" hidden>
+            <select id="s2" aria-label="Second sensor"></select>
+            <select id="c2" aria-label="At least or at most"><option value="ge">at least</option><option value="le">at most</option></select>
+            <select id="v2" aria-label="Second value" disabled></select>
+          </div>
+          <div class="preview" id="preview">Your rule: not set yet</div>
+          <ul class="sensors" id="sensorHelp"></ul>
+          <p class="hint">Each switch takes 2 seconds of yellow light, when no car moves. A green light lets one car through each second.</p>
+        </form>
+
+        <section class="card guess" aria-label="Predict, then run">
+          <h2>Before you run it</h2>
+          <p class="hint" id="predictQ">Which line of cars do you think will get longest?</p>
+          <div class="choices" id="predict"></div>
+          <div class="btnrow">
+            <button type="button" class="primary" id="runBtn">Run the lights</button>
+            <div class="seg" role="group" aria-label="Playback speed">
+              <button type="button" class="ghost" data-speed="watch" aria-pressed="true">Watch</button>
+              <button type="button" class="ghost" data-speed="fast" aria-pressed="false">Fast</button>
+            </div>
+            <button type="button" class="ghost small" id="skipBtn" hidden>Skip to end</button>
+          </div>
+          <p class="msg" id="msg" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="card" aria-label="Run log">
+          <div class="row"><h2>Run log</h2><span class="count" id="runCount"></span></div>
+          <ul class="runs" id="runs"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <section id="result" class="card result" hidden></section>
+
+  <section id="rv" class="card rv" hidden aria-label="Researcher view">
+    <h2>Researcher view</h2>
+    <div class="rvgrid">
+      <div>
+        <h3>Live session</h3>
+        <dl class="kv" id="rvLive"></dl>
+      </div>
+      <div>
+        <h3>How an action becomes evidence of CT and systems thinking</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Skill</th><th>Player does</th><th>Game logs</th><th>Proxy metric</th></tr></thead>
+            <tbody>
+              <tr><td>CT: Algorithmic thinking</td><td>Writes a condition that every light carries out on its own</td><td>The rule used in each run</td><td>Clearing rules that read the traffic, not only the clock</td></tr>
+              <tr><td>CT: Decomposition</td><td>Splits "when to switch" into a trigger and a guard (for example, a queue count AND a minimum green)</td><td>Number of conditions and how they are joined</td><td>Two-condition rules among clearing rules</td></tr>
+              <tr><td>CT: Abstraction</td><td>Picks which sensors matter and ignores the rest</td><td>Sensors available vs. sensors used</td><td>Sensors in the clearing rule</td></tr>
+              <tr><td>CT: Debugging</td><td>Reads the debrief after a failed run and changes the rule</td><td>Fields changed between runs; reruns with no change</td><td>One-change-at-a-time edits (%); runs to clear</td></tr>
+              <tr><td>CT: Transfer</td><td>Takes a rule from two lights to three</td><td>First rule tried at level 5; runs at levels 4 and 5</td><td>Level 5 runs vs. level 4 runs</td></tr>
+              <tr><td>ST: Stocks and flows</td><td>Predicts which line of cars grows most</td><td>Prediction vs. the longest line in the run</td><td>Predictions correct (%)</td></tr>
+              <tr><td>ST: Feedback</td><td>Uses rules where a longer line gets green sooner (a balancing loop)</td><td>Sensor types in rules at levels 2 and 3, where a clock alone cannot clear</td><td>Queue sensors in clearing rules</td></tr>
+              <tr><td>ST: Interconnection</td><td>Sees one light's rule waste another light's green (spillback)</td><td>Seconds light A was green but blocked by a full block</td><td>Blocked seconds across runs at levels 4 and 5</td></tr>
+              <tr><td>ST: Reinforcing loops</td><td>Predicts whether a rule will lock the square, then finds a rule that keeps the loop from closing</td><td>Gridlock prediction vs. outcome; time of gridlock; seconds cars blocked an intersection</td><td>Gridlock predictions correct; runs that gridlocked before clearing level 6</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>Does it really measure CT and systems thinking? Open questions</h3>
+      <ul>
+        <li>Every metric above is a behavioral proxy. None is shown to be CT or systems thinking until it is checked against something outside the game.</li>
+        <li>Clearing a level can come from blind trial and error. Compare runs-to-clear with one-change edits and the prediction score before reading a clearing rule as a sign of reasoning.</li>
+        <li>The prediction has two to five choices, so guessing succeeds often, especially at level 1. Use think-aloud to see whether players reason from arrivals and green time.</li>
+        <li>Content check: ask two or three researchers to map each metric to a CT or systems-thinking definition and mark the ones that do not fit.</li>
+        <li>Convergent check: compare scores with a validated CT test, Bebras-style items, or a stock-and-flow task (for example, a bathtub-dynamics item) from the same players.</li>
+        <li>Transfer: levels 4 and 5 share structure. A rule that clears level 4 often clears level 5 too, so "fewer runs" may reflect reuse rather than new understanding. Log the first rule tried at level 5 to tell them apart.</li>
+        <li>Level 6 asks a yes/no gridlock question, so guessing is right half the time. The more telling signal is whether gridlocked runs stop happening once the player has seen one.</li>
+        <li>Confounds to rule out: prior traffic-game experience, reading load in the rule builder, and players who wait for the debrief instead of predicting.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Session log</h3>
+      <textarea id="logText" rows="8" readonly aria-label="Session log as JSON"></textarea>
+      <div class="btnrow" style="margin-top:10px"><button type="button" class="ghost" id="copyLog">Copy log as JSON</button><span class="hint" id="copyNote"></span></div>
+    </div>
+  </section>
+</div>
+
+<script id="logic">
+/* Traffic simulation. Pure functions, no DOM. Time runs in whole seconds.
+   A level is a network of lanes feeding lights. Each light has two approaches (a and b) and gives one of them green.
+   A green light lets one car per second cross into lane.next, or off the map when next is null.
+   Switching costs SWITCH seconds of yellow. Cars entering a block drive TRAVEL seconds before they reach its light.
+   Without boxBlock, a car whose next block is full waits at the stop line.
+   With boxBlock, it pulls into the intersection anyway and blocks both directions until there is room. */
+const Sim=(function(){
+  const SWITCH=2,HW=20,LETTER='ABCD';
+  const range=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
+  const SENSORS={
+    gt:{name:'Green has lasted',unit:'s',values:[1,2,3,4,5,6,8,10,12,15,20,25,30],help:'seconds since this light last turned green'},
+    rq:{name:'Cars waiting at red',unit:'cars',values:range(0,10),help:'cars lined up on the road that has the red light'},
+    gq:{name:'Cars waiting at green',unit:'cars',values:range(0,10),help:'cars still lined up on the road that has the green light'}
+  };
+  /* Main Street left to right through k lights; a side street top to bottom at each light. */
+  function corridor(k,entryCap,sideCap,blockCap){
+    const xs={1:[600],2:[430,790],3:[330,600,870]}[k],MY=228;
+    const COL={M0:'--c0',S0:'--c1',M1:'--c3',S1:'--c2',M2:'--c5',S2:'--c4'};
+    const nodes=xs.map((x,i)=>({x:x,y:MY,label:k>1?LETTER[i]:''}));
+    const lanes=[];
+    for(let i=0;i<k;i++){
+      lanes.push({id:'M'+i,node:i,app:'a',next:i<k-1?'M'+(i+1):null,cap:i===0?entryCap:blockCap,entry:i===0,acc0:0,color:COL['M'+i],
+        name:i===0?'Main Street (coming in)':'the block before light '+LETTER[i],stop:[xs[i]-HW-4,MY],dir:[1,0]});
+      lanes.push({id:'S'+i,node:i,app:'b',next:null,cap:sideCap,entry:true,acc0:0.5+i*0.17,color:COL['S'+i],
+        name:k===1?'the side street':'the side street at light '+LETTER[i],stop:[xs[i],MY-HW-4],dir:[0,1]});
+    }
+    return {nodes:nodes,lanes:lanes,order:range(0,k-1).reverse(),vb:[1000,320],
+      roads:[[0,MY-HW,1000,2*HW]].concat(xs.map(x=>[x-HW,0,2*HW,320])),
+      labels:[{x:10,y:MY+HW+20,t:'Main St →'}].concat(xs.map((x,i)=>({x:x+HW+8,y:18,t:(k===1?'Side St':'Side St '+LETTER[i])+' ↓'}))),
+      chartLanes:lanes.map(l=>l.id),chartMax:10,chartTitle:'Cars waiting in each line over time',fullLabel:'street full'};
+  }
+  /* Four one-way streets around a square, in a pinwheel. Each inner block is fed at one corner and drains at the next,
+     so the four blocks form a loop. */
+  function square(entryCap,blockCap){
+    const X1=420,X2=640,Y1=190,Y2=350;
+    const nodes=[{x:X1,y:Y1,label:'A',init:{g:'a'}},{x:X2,y:Y1,label:'B',init:{g:'b'}},{x:X2,y:Y2,label:'C',init:{g:'a'}},{x:X1,y:Y2,label:'D',init:{g:'b'}}];
+    const L=(id,node,app,next,entry,acc0,name,stop,dir,color)=>({id:id,node:node,app:app,next:next,cap:entry?entryCap:blockCap,entry:entry,acc0:acc0,name:name,stop:stop,dir:dir,color:color});
+    const lanes=[
+      L('Nin',0,'a','Nb',true,0,'North St (coming in)',[X1-HW-4,Y1],[1,0],'--c0'),
+      L('Nb',1,'a',null,false,0,'the North St block (A to B)',[X2-HW-4,Y1],[1,0],'--c0'),
+      L('Ein',1,'b','Eb',true,0.25,'East Ave (coming in)',[X2,Y1-HW-4],[0,1],'--c1'),
+      L('Eb',2,'b',null,false,0,'the East Ave block (B to C)',[X2,Y2-HW-4],[0,1],'--c1'),
+      L('Sin',2,'a','Sb',true,0.5,'South St (coming in)',[X2+HW+4,Y2],[-1,0],'--c2'),
+      L('Sb',3,'a',null,false,0,'the South St block (C to D)',[X1+HW+4,Y2],[-1,0],'--c2'),
+      L('Win',3,'b','Wb',true,0.75,'West Ave (coming in)',[X1,Y2+HW+4],[0,-1],'--c3'),
+      L('Wb',0,'b',null,false,0,'the West Ave block (D to A)',[X1,Y1+HW+4],[0,-1],'--c3')
+    ];
+    return {nodes:nodes,lanes:lanes,order:[0,1,2,3],vb:[1000,540],
+      roads:[[0,Y1-HW,1000,2*HW],[0,Y2-HW,1000,2*HW],[X1-HW,0,2*HW,540],[X2-HW,0,2*HW,540]],
+      labels:[{x:10,y:Y1-HW-8,t:'North St →'},{x:990,y:Y2+HW+18,t:'← South St',end:true},{x:X2+HW+8,y:18,t:'East Ave ↓'},{x:X1-HW-8,y:530,t:'West Ave ↑',end:true}],
+      chartLanes:['Nb','Eb','Sb','Wb'],chartMax:5,chartTitle:'Cars on each inner block over time',fullLabel:'block full'};
+  }
+  const LEVELS=[
+    {name:'Quiet corner',diff:'Easy',net:corridor(1,10,10,4),sensors:['gt'],T:120,travel:2,
+      demand:[{until:999,r:{M0:0.35,S0:0.3}}],target:6,
+      brief:'One light, where Main Street meets a side street. So far the light has only a clock. Write a rule for when it switches.',
+      note:'A line of cars is a stock. It fills as cars arrive and drains only while its light is green. A very short green wastes time on yellow. A very long green lets the other line overflow. The right timing balances the two flows.'},
+    {name:'Busy main street',diff:'Easy',net:corridor(1,10,10,4),sensors:['gt','rq'],T:150,travel:2,
+      demand:[{until:999,r:{M0:0.55,S0:0.2}}],target:6,
+      brief:'Main Street now carries about three cars for every one on the side street. The light can count the cars waiting at red.',
+      note:'A clock treats both roads the same, so it cannot give the busy road more time. A rule that counts waiting cars can. The longer a line gets, the sooner it gets green, which shrinks the line again. That is a balancing feedback loop.'},
+    {name:'Rush hour',diff:'Medium',net:corridor(1,10,10,4),sensors:['gt','rq','gq'],T:160,travel:2,
+      demand:[{until:80,r:{M0:0.6,S0:0.15}},{until:999,r:{M0:0.15,S0:0.6}}],target:6,
+      brief:'For the first half of the run, Main Street is busy. Then the side street takes over. The light can also see cars waiting at green.',
+      note:'When demand shifts, a rule that senses the lines adapts by itself. A fixed plan tuned for one half would fail in the other. The system changed, and a rule built on feedback changed with it.'},
+    {name:'Two lights',diff:'Hard',net:corridor(2,10,10,4),sensors:['gt','rq','gq'],T:160,travel:2,
+      demand:[{until:999,r:{M0:0.4,S0:0.2,S1:0.35}}],target:6.2,
+      brief:'Cars leaving light A drive along a short block to light B. The block holds only 4 cars. If it is full, light A can be green and still let nobody through.',
+      note:'The lights are connected. How fast light B drains the block decides whether light A’s green is useful. A rule that is good for one corner also has to work for the whole street.'},
+    {name:'Three lights',diff:'Hard',net:corridor(3,10,10,4),sensors:['gt','rq','gq'],T:160,travel:2,
+      demand:[{until:999,r:{M0:0.4,S0:0.2,S1:0.3,S2:0.25}}],target:6.2,
+      brief:'Same street, one more light. Each side street has its own amount of traffic. Does your rule still work?',
+      note:'The same rule ran at three different corners. A rule that responds to what each light senses carries over to new places. A rule tuned to one corner’s numbers often does not.'},
+    {name:'Gridlock square',diff:'Expert',net:square(10,5),sensors:['gt','rq','gq'],T:160,travel:2,boxBlock:true,predict:'gridlock',
+      demand:[{until:999,r:{Nin:0.36,Ein:0.36,Sin:0.36,Win:0.36}}],target:9.5,
+      brief:'Four one-way streets circle a square, and each block between two lights holds 5 cars. Drivers here pull into the intersection on green even when there is no room ahead. A stuck car blocks the cross street, and that street feeds the next block around the square.',
+      note:'Gridlock is a reinforcing loop. A full block strands a car in the intersection behind it. That car blocks the cross street, so the next block cannot drain and fills up too. Once the loop closes all the way around, nothing can ever move again. Rules that hand out short greens, and only when someone is waiting, drain each block before it fills.'}
+  ];
+  function test(c,x){const v=x[c.s];return c.cmp==='le'?v<=c.v:v>=c.v;}
+  function fires(rule,x){const a=test(rule.p,x);if(!rule.op)return a;const b=test(rule.q,x);return rule.op==='and'?(a&&b):(a||b);}
+  function rate(lv,t,id){for(const s of lv.demand)if(t<s.until)return s.r[id]||0;return 0;}
+  function run(lv,rule){
+    const net=lv.net,NL=net.lanes,NN=net.nodes.length,Q={},acc={},lane={};
+    NL.forEach(l=>{Q[l.id]=[];acc[l.id]=l.acc0||0;lane[l.id]=l;});
+    const app=net.nodes.map((_,i)=>({a:NL.find(l=>l.node===i&&l.app==='a').id,b:NL.find(l=>l.node===i&&l.app==='b').id}));
+    const N=net.nodes.map(nd=>({g:(nd.init||{}).g||'a',t:0,sw:0,box:null}));
+    const z=()=>Array(NN).fill(0);
+    const R={overflow:0,firstOverflow:null,turnLog:[],admitted:0,exited:0,wait:0,switches:z(),blocked:z(),idle:z(),boxed:z(),maxQ:{},frames:[],gridlock:null};
+    const arrive=(id,t)=>{const q=Q[id];
+      if(q.length<lane[id].cap){q.push(t);R.admitted++;}
+      else{R.overflow++;R.turnLog.push({t:t,q:id});if(!R.firstOverflow)R.firstOverflow={t:t,q:id};}};
+    for(let t=0;t<lv.T;t++){
+      for(const l of NL)if(l.entry){acc[l.id]+=rate(lv,t,l.id);if(acc[l.id]>=1){acc[l.id]-=1;arrive(l.id,t);}}
+      const bl=Array(NN).fill(false);
+      for(const i of net.order){
+        const n=N[i];
+        if(n.box){if(Q[n.box].length<lane[n.box].cap){Q[n.box].push(t+lv.travel);n.box=null;}else R.boxed[i]++;continue;}
+        if(n.sw>0)continue;
+        const gid=app[i][n.g],rid=app[i][n.g==='a'?'b':'a'],G=Q[gid],Rd=Q[rid],nx=lane[gid].next;
+        if(!(G.length&&G[0]<=t)){if(Rd.length&&Rd[0]<=t)R.idle[i]++;continue;}
+        if(!nx){G.shift();R.exited++;}
+        else if(Q[nx].length<lane[nx].cap){G.shift();Q[nx].push(t+lv.travel);}
+        else if(lv.boxBlock){G.shift();n.box=nx;bl[i]=true;R.blocked[i]++;}
+        else{bl[i]=true;R.blocked[i]++;}
+      }
+      for(const l of NL)for(const r of Q[l.id])if(r<=t)R.wait++;
+      for(const n of N)if(n.box)R.wait++;
+      if(lv.boxBlock&&!R.gridlock&&N.every(n=>n.box))R.gridlock={t:t};
+      for(let i=0;i<NN;i++){
+        const n=N[i];
+        if(n.sw>0){n.sw--;if(n.sw===0){n.g=n.g==='a'?'b':'a';n.t=0;}continue;}
+        n.t++;
+        const gid=app[i][n.g],rid=app[i][n.g==='a'?'b':'a'];
+        if(rule&&fires(rule,{gt:n.t,gq:Q[gid].length,rq:Q[rid].length})){n.sw=SWITCH;R.switches[i]++;}
+      }
+      const f={t:t,Q:{},Qt:{},L:N.map(n=>n.sw>0?'y':n.g),box:N.map(n=>n.box),bl:bl,gl:!!R.gridlock,
+        through:R.exited,turned:R.overflow,wait:R.admitted?R.wait/R.admitted:0};
+      for(const l of NL){f.Q[l.id]=Q[l.id].length;f.Qt[l.id]=Q[l.id].filter(r=>r>t).length;R.maxQ[l.id]=Math.max(R.maxQ[l.id]||0,f.Q[l.id]);}
+      R.frames.push(f);
+    }
+    R.avgWait=R.admitted?R.wait/R.admitted:0;
+    R.lostShare=R.switches.reduce((a,b)=>a+b,0)*SWITCH/(lv.T*NN);
+    R.pass=R.overflow===0&&!R.gridlock&&R.avgWait<=lv.target+1e-9;
+    return R;
+  }
+  const laneOf=(lv,id)=>lv.net.lanes.find(l=>l.id===id);
+  return {SENSORS:SENSORS,LEVELS:LEVELS,SWITCH:SWITCH,HW:HW,run:run,fires:fires,laneOf:laneOf};
+})();
+</script>
+
+<script id="ui">
+(function(){
+'use strict';
+const {SENSORS,LEVELS,SWITCH,HW,run,laneOf}=Sim;
+const NLV=LEVELS.length;
+const $=s=>document.querySelector(s);
+const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const clock=t=>Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
+const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S,timer=null;
+
+function newSession(){
+  S={sid:Math.random().toString(36).slice(2,8),started:new Date().toISOString(),lvl:0,view:'play',busy:false,speed:'watch',L:null,done:{},log:[],seenSensors:new Set()};
+}
+function logEv(type,data){
+  const L=S.L;
+  S.log.push(Object.assign({level:S.lvl+1,t:L?Math.round(performance.now()-L.t0):0,type:type},data||{}));
+}
+const lv=()=>LEVELS[S.lvl];
+const lanes=()=>lv().net.lanes;
+const qName=id=>laneOf(lv(),id).name;
+
+/* ---------- rule text ---------- */
+const unitTxt=(s,v)=>s==='gt'?v+' s':(v===1?'1 car':v+' cars');
+function clauseText(c){
+  const w=c.cmp==='le'?'at most':'at least';
+  if(c.s==='gt')return 'the green has lasted '+w+' '+c.v+' s';
+  const road=c.s==='rq'?'red':'green';
+  if(c.cmp==='le'&&c.v===0)return 'no cars are waiting at '+road;
+  return w+' '+unitTxt(c.s,c.v)+' '+(c.v===1?'is':'are')+' waiting at '+road;
+}
+function ruleText(r){return clauseText(r.p)+(r.op?' '+r.op.toUpperCase()+' '+clauseText(r.q):'');}
+const fields=r=>r?[r.p.s,r.p.cmp,r.p.v,r.op||'',r.op?r.q.s:'',r.op?r.q.cmp:'',r.op?r.q.v:'']:[];
+function ruleDiff(a,b){if(!a||!b)return null;const x=fields(a),y=fields(b);let d=0;for(let i=0;i<x.length;i++)if(x[i]!==y[i])d++;return d;}
+
+/* ---------- levels ---------- */
+function startLevel(idx,how){
+  stopPlayback();
+  S.lvl=idx;S.view='play';S.busy=false;document.body.classList.remove('busy');
+  S.L={idx:idx,t0:performance.now(),runs:[],prediction:null,lastRule:null,R:null,cleared:false};
+  const fresh=lv().sensors.filter(s=>!S.seenSensors.has(s));
+  lv().sensors.forEach(s=>S.seenSensors.add(s));
+  const note=$('#newSensor');
+  if(lv().boxBlock){note.hidden=false;note.innerHTML='<strong>New danger:</strong> drivers block the intersection when there is no room ahead. Any rule you already wrote is still here. Will it hold up?';}
+  else if(fresh.length&&idx>0){note.hidden=false;note.innerHTML='<strong>New sensor:</strong> '+fresh.map(s=>SENSORS[s].name).join(', ')+'. Your rule from the last level is still here.';}
+  else note.hidden=true;
+  const kept=draftRule();
+  fillSensors(1);fillSensors(2);fillValues(1);fillValues(2);
+  if(kept&&!draftRule())resetBuilder();
+  updatePreview();
+  $('#sensorHelp').innerHTML=lv().sensors.map(s=>'<li><b>'+SENSORS[s].name+'</b>: '+SENSORS[s].help+'</li>').join('');
+  logEv('level_start',{name:lv().name,how:how||'next',starting_rule:draftRule()?ruleText(draftRule()):null});
+  $('#stageStatus').textContent='Write a rule, make a prediction, then run the lights.';
+  $('#debrief').hidden=true;setMsg('','');
+  render();
+  drawFrame(null);
+}
+
+function render(){
+  renderPips();
+  const play=S.view==='play';
+  $('#play').hidden=!play;$('#result').hidden=play;
+  if(play){
+    const l=lv();
+    $('#levelLabel').textContent='Level '+(S.lvl+1)+' of '+NLV+' · '+l.name+' · '+l.diff;
+    $('#brief').textContent=l.brief;
+    $('#goal').innerHTML='<b>Goal:</b> '+(l.boxBlock?'no gridlock, ':'')+'no car gets turned away, and the average wait stays at '+l.target+' s or less over '+clock(l.T)+' of traffic.';
+    renderPredict();renderRuns();
+  }else renderResult();
+  renderRV();
+}
+function renderPips(){
+  $('#pips').innerHTML=LEVELS.map((l,i)=>{
+    const now=i===S.lvl&&S.view==='play',cls=(S.done[i]?'done':'')+(now?' now':'');
+    return '<li><button type="button" class="'+cls+'" data-lvl="'+i+'"'+(now?' aria-current="step"':'')+' title="Level '+(i+1)+': '+l.name+' ('+l.diff+')" aria-label="Level '+(i+1)+': '+l.name+', '+l.diff+(S.done[i]?', cleared':'')+'">'+(i+1)+'</button></li>';
+  }).join('');
+}
+$('#pips').addEventListener('click',e=>{
+  const b=e.target.closest('[data-lvl]');if(!b||S.busy)return;
+  const i=+b.dataset.lvl;if(i===S.lvl&&S.view==='play')return;
+  logEv('jump',{to:i+1});startLevel(i,'jump');
+});
+
+/* ---------- prediction ---------- */
+function predictOptions(){
+  if(lv().predict==='gridlock')return [{id:'yes',label:'Yes, it will lock up'},{id:'no',label:'No, traffic keeps moving'}];
+  return lanes().map(l=>({id:l.id,label:cap1(l.name),color:l.color}));
+}
+function renderPredict(){
+  const L=S.L;
+  $('#predictQ').textContent=lv().predict==='gridlock'?'Will your rule cause gridlock?':'Which line of cars do you think will get longest?';
+  $('#predict').innerHTML=predictOptions().map(o=>'<button type="button" class="ghost small" data-q="'+o.id+'" aria-pressed="'+(L.prediction===o.id)+'">'+(o.color?'<i style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var('+o.color+')"></i>':'')+esc(o.label)+'</button>').join('');
+}
+$('#predict').addEventListener('click',e=>{
+  const b=e.target.closest('[data-q]');if(!b||S.busy)return;
+  S.L.prediction=b.dataset.q;logEv('predict',{choice:b.dataset.q});renderPredict();setMsg('','');
+});
+
+/* ---------- rule builder ---------- */
+function fillSensors(i){
+  const sel=$('#s'+i),cur=sel.value;
+  sel.innerHTML='<option value="">Sensor…</option>'+lv().sensors.map(k=>'<option value="'+k+'">'+SENSORS[k].name+'</option>').join('');
+  if(lv().sensors.indexOf(cur)>=0)sel.value=cur;
+}
+function fillValues(i){
+  const s=$('#s'+i).value,v=$('#v'+i),cur=v.value;
+  if(!s){v.innerHTML='<option value="">Value…</option>';v.disabled=true;return;}
+  v.disabled=false;
+  v.innerHTML='<option value="">Value…</option>'+SENSORS[s].values.map(x=>'<option value="'+x+'">'+unitTxt(s,x)+'</option>').join('');
+  if(SENSORS[s].values.map(String).indexOf(cur)>=0)v.value=cur;
+}
+function readClause(i){const s=$('#s'+i).value,v=$('#v'+i).value;if(!s||v==='')return null;return{s:s,cmp:$('#c'+i).value,v:+v};}
+function draftRule(){
+  const p=readClause(1);if(!p)return null;
+  const op=$('#op').value;if(!op)return{p:p,op:''};
+  const q=readClause(2);if(!q)return null;
+  return{p:p,op:op,q:q};
+}
+function setRule(r){
+  fillSensors(1);fillSensors(2);
+  $('#s1').value=r.p.s;$('#c1').value=r.p.cmp;fillValues(1);$('#v1').value=String(r.p.v);
+  $('#op').value=r.op||'';$('#clause2').hidden=!r.op;
+  if(r.op){$('#s2').value=r.q.s;$('#c2').value=r.q.cmp;fillValues(2);$('#v2').value=String(r.q.v);}
+  else{$('#s2').value='';fillValues(2);}
+  updatePreview();
+}
+function resetBuilder(){
+  fillSensors(1);fillSensors(2);
+  $('#s1').value='';$('#s2').value='';$('#c1').value='ge';$('#c2').value='ge';$('#op').value='';
+  $('#clause2').hidden=true;fillValues(1);fillValues(2);updatePreview();
+}
+function updatePreview(){
+  const r=draftRule();
+  $('#preview').textContent=r?'Your rule: switch when '+ruleText(r)+'.':'Your rule: not set yet';
+}
+function setMsg(t,k){const m=$('#msg');m.textContent=t;m.className='msg '+(k||'');}
+$('#guess').addEventListener('change',e=>{
+  if(S.busy)return;
+  const id=e.target.id;
+  if(id==='s1')fillValues(1);else if(id==='s2')fillValues(2);
+  else if(id==='op')$('#clause2').hidden=!e.target.value;
+  updatePreview();setMsg('','');
+  const r=draftRule();logEv('draft',{rule:r?ruleText(r):'incomplete'});
+});
+$('#guess').addEventListener('submit',e=>e.preventDefault());
+
+/* ---------- drawing the street ---------- */
+const right=d=>[-d[1],d[0]];
+const isH=d=>d[0]!==0;
+const carLen=d=>isH(d)?16:14,carWid=d=>isH(d)?12:12;
+const gapOf=(l,net)=>isH(l.dir)?20:(net.vb[1]>400?16:17);
+const clampX=(x,vb)=>Math.max(8,Math.min(vb[0]-8,x)),clampY=(y,vb)=>Math.max(14,Math.min(vb[1]-6,y));
+function lampCls(s){return s==='y'?'lamp-y':(s?'lamp-g':'lamp-r');}
+function stopCls(s){return s==='y'?'stop-y':(s?'stop-g':'stop-r');}
+function carRect(cx,cy,d,color,extra){
+  const w=isH(d)?carLen(d):carWid(d),h=isH(d)?carWid(d):carLen(d);
+  return '<rect x="'+(cx-w/2)+'" y="'+(cy-h/2)+'" width="'+w+'" height="'+h+'" rx="3" style="fill:var('+color+')'+(extra||'')+'"/>';
+}
+function drawFrame(f){
+  const l=lv(),net=l.net,vb=net.vb,P=[],R=S.L.R;
+  P.push('<svg viewBox="0 0 '+vb[0]+' '+vb[1]+'" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">');
+  net.roads.forEach(r=>P.push('<rect class="road" x="'+r[0]+'" y="'+r[1]+'" width="'+r[2]+'" height="'+r[3]+'"/>'));
+  net.lanes.forEach(ln=>{
+    const d=ln.dir,rt=right(d),gap=gapOf(ln,net),[sx,sy]=ln.stop;
+    const n=net.nodes[ln.node],st=f?f.L[ln.node]:(n.init&&n.init.g)||'a';
+    const state=st==='y'?'y':st===ln.app;
+    const len=f?f.Q[ln.id]:0,tr=f?f.Qt[ln.id]:0;
+    if(f&&len>=ln.cap){
+      const L2=ln.cap*gap+6,x1=sx,y1=sy,x2=sx-d[0]*L2,y2=sy-d[1]*L2;
+      const rx=Math.min(x1,x2)-(isH(d)?0:HW),ry=Math.min(y1,y2)-(isH(d)?HW:0);
+      P.push('<rect class="full" x="'+rx+'" y="'+ry+'" width="'+(isH(d)?L2:2*HW)+'" height="'+(isH(d)?2*HW:L2)+'"/>');
+    }
+    const lx=sx+d[0]*3,ly=sy+d[1]*3;
+    P.push('<line class="'+stopCls(state)+'" x1="'+(lx+rt[0]*(HW-2))+'" y1="'+(ly+rt[1]*(HW-2))+'" x2="'+(lx-rt[0]*(HW-2))+'" y2="'+(ly-rt[1]*(HW-2))+'" stroke-width="5"/>');
+    const hx=sx-d[0]*10+rt[0]*(HW+14),hy=sy-d[1]*10+rt[1]*(HW+14);
+    P.push('<rect class="pole" x="'+(hx-7)+'" y="'+(hy-7)+'" width="14" height="14" rx="4"/><circle class="'+lampCls(state)+'" cx="'+hx+'" cy="'+hy+'" r="4.5"/>');
+    for(let j=0;j<len;j++){
+      const off=4+carLen(d)/2+gap*j,cx=sx-d[0]*off,cy=sy-d[1]*off;
+      P.push(carRect(cx,cy,d,ln.color,j>=len-tr?';opacity:.45':''));
+    }
+    if(ln.entry&&f&&R){
+      let k=0;for(const e of R.turnLog){if(e.t>f.t)break;if(e.q===ln.id)k++;}
+      if(k){
+        const off=ln.cap*gap+20,tx=clampX(sx-d[0]*off+rt[0]*(HW+10),vb),ty=clampY(sy-d[1]*off+rt[1]*(HW+10)+4,vb);
+        P.push('<text class="badge" x="'+tx+'" y="'+ty+'" text-anchor="'+(tx>vb[0]-120?'end':'start')+'">'+k+' turned away</text>');
+      }
+    }
+  });
+  net.nodes.forEach((n,i)=>{
+    if(n.label)P.push('<circle cx="'+(n.x+HW+16)+'" cy="'+(n.y+HW+18)+'" r="11" fill="var(--accent)"/><text class="ltr" x="'+(n.x+HW+16)+'" y="'+(n.y+HW+23)+'" text-anchor="middle">'+n.label+'</text>');
+    if(f&&f.box[i]){
+      const to=laneOf(l,f.box[i]);
+      P.push('<rect x="'+(n.x-HW+3)+'" y="'+(n.y-HW+3)+'" width="'+(2*HW-6)+'" height="'+(2*HW-6)+'" rx="5" fill="none" stroke="var(--bad)" stroke-width="2.5" stroke-dasharray="4 3"/>');
+      P.push(carRect(n.x,n.y,to.dir,to.color));
+    }
+  });
+  net.labels.forEach(t=>P.push('<text class="lbl m" x="'+t.x+'" y="'+t.y+'"'+(t.end?' text-anchor="end"':'')+'>'+t.t+'</text>'));
+  if(f&&f.gl){
+    const cx=vb[0]/2,cy=(net.nodes[0].y+net.nodes[2].y)/2;
+    P.push('<rect x="'+(cx-76)+'" y="'+(cy-19)+'" width="152" height="38" rx="9" fill="var(--bad)"/><text x="'+cx+'" y="'+(cy+7)+'" text-anchor="middle" style="font-family:var(--f-display);font-weight:800;font-size:20px;fill:#fff;letter-spacing:.06em">GRIDLOCK</text>');
+  }
+  P.push('</svg>');
+  $('#scene').innerHTML=P.join('');
+  $('#stClock').textContent=clock(f?f.t+1:0)+' / '+clock(l.T);
+  $('#stThrough').textContent=f?f.through:0;
+  $('#stTurned').textContent=f?f.turned:0;
+  $('#stTurnedBox').classList.toggle('bad',!!(f&&f.turned));
+  $('#stWait').textContent=(f?f.wait:0).toFixed(1)+' s';
+  $('#stWaitBox').classList.toggle('bad',!!(f&&f.t>20&&f.wait>l.target));
+  $('#chartTitle').textContent=net.chartTitle;
+  $('#chart').innerHTML=chartSVG(f&&R?R.frames.slice(0,f.t+1):[],l);
+  $('#legend').innerHTML=net.chartLanes.map(id=>{const ln=laneOf(l,id);return '<span><i style="background:var('+ln.color+')"></i>'+cap1(ln.name)+(!ln.entry&&net.chartMax>ln.cap?' (holds '+ln.cap+')':'')+'</span>';}).join('');
+}
+function chartSVG(frames,l){
+  const net=l.net,W=600,H=150,pl=28,pr=8,pt=10,pb=20,iw=W-pl-pr,ih=H-pt-pb,maxY=net.chartMax;
+  const X=t=>pl+iw*t/(l.T-1),Y=v=>pt+ih*(1-Math.min(v,maxY)/maxY);
+  const P=['<svg class="chart" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'];
+  [0,Math.round(maxY/2),maxY].forEach(v=>{P.push('<line class="axis" x1="'+pl+'" y1="'+Y(v)+'" x2="'+(W-pr)+'" y2="'+Y(v)+'"/><text class="axt" x="'+(pl-6)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+v+'</text>');});
+  P.push('<line class="capl" x1="'+pl+'" y1="'+Y(maxY)+'" x2="'+(W-pr)+'" y2="'+Y(maxY)+'"/><text class="axt" x="'+(W-pr)+'" y="'+(Y(maxY)-3)+'" text-anchor="end" style="fill:var(--bad)">'+net.fullLabel+'</text>');
+  for(let s=0;s<=l.T;s+=30)P.push('<text class="axt" x="'+X(Math.min(s,l.T-1))+'" y="'+(H-5)+'" text-anchor="middle">'+clock(s)+'</text>');
+  if(frames.length){
+    const g=frames.findIndex(f=>f.gl);
+    if(g>=0)P.push('<line x1="'+X(frames[g].t)+'" y1="'+pt+'" x2="'+X(frames[g].t)+'" y2="'+(pt+ih)+'" stroke="var(--bad)" stroke-width="1.5"/><text class="axt" x="'+(X(frames[g].t)+4)+'" y="'+(pt+ih-4)+'" style="fill:var(--bad)">gridlock</text>');
+    net.chartLanes.forEach(id=>{
+      const ln=laneOf(l,id);
+      const pts=frames.map(f=>X(f.t).toFixed(1)+','+Y(f.Q[id]).toFixed(1)).join(' ');
+      P.push('<polyline points="'+pts+'" fill="none" stroke-width="2" stroke-linejoin="round" style="stroke:var('+ln.color+')"/>');
+    });
+  }
+  P.push('</svg>');return P.join('');
+}
+
+/* ---------- running ---------- */
+function stopPlayback(){if(timer){clearTimeout(timer);timer=null;}}
+function longestLines(R){
+  let m=-1;for(const k in R.maxQ)m=Math.max(m,R.maxQ[k]);
+  const ids=[];for(const k in R.maxQ)if(R.maxQ[k]>=m-1&&m>0)ids.push(k);
+  return ids.length?ids:Object.keys(R.maxQ);
+}
+$('#runBtn').addEventListener('click',()=>{
+  if(S.busy)return;
+  const L=S.L,r=draftRule();
+  if(!r){setMsg('Finish your rule first: pick a sensor and a value'+($('#op').value?' for both conditions.':'.'),'bad');return;}
+  if(!L.prediction){setMsg(lv().predict==='gridlock'?'Make a prediction first: will your rule cause gridlock?':'Make a prediction first: which line will get longest?','bad');return;}
+  const R=run(lv(),r);
+  L.R=R;
+  const diff=ruleDiff(L.lastRule,r);
+  const longest=longestLines(R);
+  const predOk=lv().predict==='gridlock'?((L.prediction==='yes')===!!R.gridlock):longest.indexOf(L.prediction)>=0;
+  const entry={n:L.runs.length+1,rule:r,text:ruleText(r),pass:R.pass,avgWait:+R.avgWait.toFixed(2),turned:R.overflow,prediction:L.prediction,predOk:predOk,longest:longest,
+    gridlock:R.gridlock?R.gridlock.t:null,fieldsChanged:diff,switches:R.switches.slice(),blocked:R.blocked.slice(),boxed:R.boxed.slice(),idle:R.idle.slice(),lostShare:+R.lostShare.toFixed(3),firstOverflow:R.firstOverflow};
+  L.runs.push(entry);L.lastRule=r;
+  logEv('run',{run:entry.n,rule:entry.text,prediction:entry.prediction,prediction_ok:predOk,longest_line:longest,pass:R.pass,avg_wait:entry.avgWait,turned_away:R.overflow,
+    gridlock_at:entry.gridlock,fields_changed:diff,switches:entry.switches,blocked_seconds:entry.blocked,box_blocked_seconds:entry.boxed,idle_green_seconds:entry.idle,yellow_share:entry.lostShare,first_overflow:R.firstOverflow});
+  S.busy=true;document.body.classList.add('busy');
+  $('#runBtn').disabled=true;$('#skipBtn').hidden=false;$('#debrief').hidden=true;setMsg('','');
+  $('#stageStatus').textContent='The lights are running your rule…';
+  play(0);
+});
+function play(t){
+  const R=S.L.R;
+  if(t>=R.frames.length){finishRun();return;}
+  drawFrame(R.frames[t]);
+  if(reduce&&S.speed==='watch'){timer=setTimeout(()=>play(t+4),60);return;}
+  timer=setTimeout(()=>play(t+1),S.speed==='fast'?28:110);
+}
+$('#skipBtn').addEventListener('click',()=>{stopPlayback();finishRun();});
+document.querySelector('.seg').addEventListener('click',e=>{
+  const b=e.target.closest('[data-speed]');if(!b)return;
+  S.speed=b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+});
+function finishRun(){
+  stopPlayback();
+  const L=S.L,R=L.R,e=L.runs[L.runs.length-1];
+  drawFrame(R.frames[R.frames.length-1]);
+  S.busy=false;document.body.classList.remove('busy');
+  $('#runBtn').disabled=false;$('#skipBtn').hidden=true;
+  $('#stageStatus').textContent=R.pass?'Every car got through on time.':R.gridlock?'Gridlock. Read what happened, change your rule, and try again.':'The run is over. Read what happened, change your rule, and try again.';
+  const d=$('#debrief');d.hidden=false;d.className='debrief'+(R.pass?' ok':'');
+  d.innerHTML='<h3>'+(R.pass?'Level cleared':'What happened')+'</h3>'+diagnose(R,e).map(x=>'<p>'+x+'</p>').join('');
+  L.prediction=null;
+  if(R.pass){
+    L.cleared=true;
+    const first=L.runs[0];
+    const sum={level:L.idx+1,name:lv().name,runs:L.runs.length,failed_runs:L.runs.filter(x=>!x.pass).length,
+      gridlock_runs:L.runs.filter(x=>x.gridlock!==null).length,
+      predictions_ok:L.runs.filter(x=>x.predOk).length,rule:e.text,avg_wait:e.avgWait,
+      sensors:Array.from(new Set([e.rule.p.s].concat(e.rule.op?[e.rule.q.s]:[]))),conditions:e.rule.op?2:1,
+      one_change_edits:L.runs.filter(x=>x.fieldsChanged===1).length,edits:L.runs.filter(x=>x.fieldsChanged!==null).length,
+      seconds:Math.round((performance.now()-L.t0)/1000),first_rule:first.text,first_result:first.pass?'cleared':(first.gridlock!==null?'gridlock':'failed')};
+    S.done[L.idx]=sum;logEv('level_end',sum);
+    setTimeout(()=>{S.view='result';render();},reduce?0:900);
+  }
+  render();
+}
+function diagnose(R,e){
+  const l=lv(),out=[];
+  if(l.predict==='gridlock'){
+    out.push('Your prediction: '+(e.prediction==='yes'?'gridlock':'no gridlock')+'. '+(e.predOk?'Right.':'Not this time.'));
+  }else{
+    let top=0;for(const k in R.maxQ)top=Math.max(top,R.maxQ[k]);
+    const mine=R.maxQ[e.prediction];
+    out.push('Your prediction: '+cap1(qName(e.prediction))+'. '+(!e.predOk?'The longest line was '+e.longest.map(qName).join(' or ')+' ('+top+' cars).'
+      :mine>=top?'Right, that line got longest ('+mine+' cars).'
+      :'Close enough: it reached '+mine+' cars, and the longest line reached '+top+'.'));
+  }
+  const lost=Math.round(R.lostShare*100),idle=R.idle.reduce((a,b)=>a+b,0),blk=R.blocked.reduce((a,b)=>a+b,0),boxed=R.boxed.reduce((a,b)=>a+b,0);
+  if(R.pass){
+    out.push('Average wait '+R.avgWait.toFixed(1)+' s (goal '+l.target+' s), and no car was turned away.');
+    return out;
+  }
+  if(R.gridlock){
+    out.push('At '+clock(R.gridlock.t)+' the square locked up. All four blocks were full, and a car sat stuck in the middle of every intersection, each one waiting for room on a block that was itself stuck. Nothing could move after that.');
+    const first=R.frames.findIndex(f=>f.box.some(Boolean));
+    const spread=first>=0?R.gridlock.t-R.frames[first].t:0;
+    if(spread>=2)out.push('The first car got stuck in an intersection at '+clock(R.frames[first].t)+'. From there it took '+spread+' s for the jam to spread all the way around the loop.');
+    else out.push('All four intersections jammed in the same moment: every light gave a long green into its block at once, and the blocks filled together.');
+    out.push('Long greens push cars into a block faster than the next light drains it. Look at which block fills first on the graph.');
+    return out;
+  }
+  if(R.firstOverflow){
+    const fo=R.firstOverflow,ln=laneOf(l,fo.q);
+    out.push('At '+clock(fo.t)+', '+ln.name+' filled up, so arriving cars were turned away ('+R.overflow+' in all).');
+    let red=0;for(let k=fo.t-1;k>=0&&R.frames[k].L[ln.node]!==ln.app;k--)red++;
+    if(l.boxBlock&&boxed>=8)out.push('Cars stuck in the middle of intersections blocked the cross streets for '+boxed+' s in total.');
+    else if(fo.q==='M0'&&l.net.nodes.length>1&&R.blocked[0]>=6)out.push('Light A was green but stuck for '+R.blocked[0]+' s in total, because the block ahead was full. A jam at light B spilled back to light A.');
+    else if(red>=10)out.push('Its light had been red for '+red+' s. The other road held the green too long.');
+    else if(lost>=25)out.push('Your lights spent '+lost+'% of the run on yellow. While a light switches, no car moves.');
+    else out.push('Cars arrived there faster than its green time let them leave.');
+  }else{
+    out.push('No car was turned away, but the average wait was '+R.avgWait.toFixed(1)+' s. The goal is '+l.target+' s or less.');
+    if(lost>=25)out.push('Your lights spent '+lost+'% of the run on yellow. While a light switches, no car moves.');
+    else if(l.boxBlock&&boxed>=8)out.push('Cars stuck in the middle of intersections blocked the cross streets for '+boxed+' s in total. The square came close to gridlock.');
+    else if(l.net.nodes.length>1&&blk>=8)out.push('Lights were green but blocked by a full block for '+blk+' s in total. One light’s rule is slowing down another.');
+    else if(idle>=8)out.push('For '+idle+' s, a light stayed green with nobody to let through while cars sat at the red.');
+    else out.push('Try switching a little sooner or later, and compare the queue graph between runs.');
+  }
+  return out;
+}
+
+/* ---------- run log ---------- */
+function renderRuns(){
+  const L=S.L;
+  $('#runCount').textContent=L.runs.length+' run'+(L.runs.length===1?'':'s');
+  if(!L.runs.length){$('#runs').innerHTML='<li class="empty" style="display:block">No runs yet. Each run is a test of your rule.</li>';return;}
+  $('#runs').innerHTML=L.runs.slice().reverse().map(x=>'<li><span class="mark '+(x.pass?'ok':'no')+'" aria-label="'+(x.pass?'Cleared':'Not cleared')+'">'+(x.pass?'✓':'✕')+'</span><span class="rt">#'+x.n+' switch when '+esc(x.text)+'</span><button type="button" class="ghost small" data-load="'+(x.n-1)+'" aria-label="Load rule from run '+x.n+'">Load</button><span class="meta">'+(x.gridlock!==null?'gridlock at '+clock(x.gridlock)+' · ':'')+'wait '+x.avgWait.toFixed(1)+' s · '+x.turned+' turned away · prediction '+(x.predOk?'✓':'✕')+'</span></li>').join('');
+}
+$('#runs').addEventListener('click',e=>{
+  const b=e.target.closest('[data-load]');if(!b||S.busy)return;
+  const x=S.L.runs[+b.dataset.load];setRule(x.rule);logEv('load_rule',{run:x.n,rule:x.text});
+});
+
+/* ---------- results ---------- */
+function renderResult(){
+  const box=$('#result');
+  const allDone=LEVELS.every((_,i)=>S.done[i]);
+  if(S.view==='result'){
+    const d=S.done[S.lvl],l=lv(),last=S.lvl===NLV-1;
+    box.innerHTML='<p class="kicker">Level '+d.level+' cleared · '+l.name+'</p>'
+      +'<h2 id="resultTitle" tabindex="-1">Your rule: switch when '+esc(d.rule)+'</h2>'
+      +'<dl class="kv">'
+      +'<dt>Runs</dt><dd>'+d.runs+'</dd>'
+      +(l.boxBlock?'<dt>Runs that gridlocked</dt><dd>'+d.gridlock_runs+'</dd>':'')
+      +'<dt>Predictions right</dt><dd>'+d.predictions_ok+' of '+d.runs+'</dd>'
+      +'<dt>Edits that changed one thing</dt><dd>'+d.one_change_edits+' of '+d.edits+'</dd>'
+      +'<dt>Average wait</dt><dd>'+d.avg_wait.toFixed(1)+' s (goal '+l.target+' s)</dd>'
+      +'<dt>Time</dt><dd>'+clock(d.seconds)+'</dd></dl>'
+      +'<div>'+chartSVG(S.L.R.frames,l)+'</div>'
+      +'<p class="coach"><strong>The system:</strong> '+l.note+'</p>'
+      +'<div class="btnrow">'+(last?'<button type="button" class="primary" data-act="final">See my summary</button>':'<button type="button" class="primary" data-act="next">Go to level '+(S.lvl+2)+'</button>')
+      +'<button type="button" class="ghost" data-act="replay">Play this level again</button></div>';
+  }else{
+    const tot=LEVELS.map((_,i)=>S.done[i]).filter(Boolean),runs=tot.reduce((a,x)=>a+x.runs,0),preds=tot.reduce((a,x)=>a+x.predictions_ok,0);
+    const d4=S.done[3],d5=S.done[4],d6=S.done[5];
+    let transfer='';
+    if(d4&&d5)transfer+='<p class="coach">Levels 4 and 5 have the same shape: connected lights in a row. You needed '+d4.runs+' run'+(d4.runs===1?'':'s')+' at level 4 and '+d5.runs+' at level 5. '+(d5.first_rule===d4.rule?'You started level 5 with your level 4 rule, which is reusing what worked.':'You started level 5 with a different rule from the one that cleared level 4.')+'</p>';
+    if(d5&&d6)transfer+='<p class="coach">At level 6 your first rule was "switch when '+esc(d6.first_rule)+'", and that run '+(d6.first_result==='gridlock'?'ended in gridlock':d6.first_result==='cleared'?'cleared the square':'did not clear')+'. '+(d6.first_rule!==d5.rule?'':d6.first_result==='cleared'?'That was your level 5 rule, and it carried over to a loop of streets.':'That was your level 5 rule. A rule that works on a straight street can fail once the streets form a loop.')+'</p>';
+    box.innerHTML='<p class="kicker">'+(allDone?'All '+NLV+' levels cleared':'Summary so far')+'</p>'
+      +'<h2 id="resultTitle" tabindex="-1">How you played</h2>'
+      +'<div class="tablewrap"><table><thead><tr><th>Level</th><th>Clearing rule</th><th>Runs</th><th>Predictions</th><th>Wait</th></tr></thead><tbody>'
+      +LEVELS.map((l,i)=>{const x=S.done[i];return '<tr><td>'+(i+1)+'. '+l.name+'</td><td>'+(x?'switch when '+esc(x.rule):'not cleared')+'</td><td>'+(x?x.runs:'')+'</td><td>'+(x?x.predictions_ok+'/'+x.runs:'')+'</td><td>'+(x?x.avg_wait.toFixed(1)+' s':'')+'</td></tr>';}).join('')
+      +'</tbody></table></div>'
+      +transfer
+      +'<p class="coach">Predictions right: '+preds+' of '+runs+'. Predicting which line grows, or whether the square will lock up, means picturing cars flowing in and out over time. That is the heart of systems thinking.</p>'
+      +'<div class="btnrow"><button type="button" class="primary" data-act="again">Play again</button><button type="button" class="ghost" data-act="copy">Copy session log</button><span class="hint" id="copyNote2"></span></div>';
+  }
+  const t=$('#resultTitle');if(t)t.focus();
+}
+$('#result').addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');if(!a)return;
+  const act=a.dataset.act;
+  if(act==='next')startLevel(S.lvl+1,'next');
+  else if(act==='replay')startLevel(S.lvl,'replay');
+  else if(act==='final'){S.view='final';render();}
+  else if(act==='again'){newSession();resetBuilder();startLevel(0);}
+  else if(act==='copy')copyLog($('#copyNote2'));
+});
+
+/* ---------- researcher view ---------- */
+function renderRV(){
+  const L=S.L;if(!L)return;
+  const runs=L.runs,last=runs[runs.length-1];
+  const edits=runs.filter(x=>x.fieldsChanged!==null);
+  const sum=a=>a.reduce((x,y)=>x+y,0);
+  const rows=[
+    ['Level',(L.idx+1)+'. '+lv().name+' ('+lv().diff+')'],
+    ['Runs',String(runs.length)],
+    ['Failed runs',String(runs.filter(x=>!x.pass).length)],
+    ['Predictions right',runs.filter(x=>x.predOk).length+' of '+runs.length],
+    ['One-change edits',edits.filter(x=>x.fieldsChanged===1).length+' of '+edits.length],
+    ['Reruns with no change',String(edits.filter(x=>x.fieldsChanged===0).length)],
+    ['Last rule',last?last.text:'none'],
+    ['Last run: yellow time',last?Math.round(last.lostShare*100)+'%':'-'],
+    ['Last run: green with nobody to serve',last?sum(last.idle)+' s':'-'],
+    ['Last run: green but blocked ahead',last?sum(last.blocked)+' s':'-']
+  ];
+  if(lv().boxBlock)rows.push(['Last run: gridlock',last?(last.gridlock!==null?'at '+clock(last.gridlock):'none'):'-'],['Runs that gridlocked',String(runs.filter(x=>x.gridlock!==null).length)]);
+  rows.push(['Levels cleared',Object.keys(S.done).length+' of '+NLV]);
+  $('#rvLive').innerHTML=rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>').join('');
+  $('#logText').value=JSON.stringify(exportObj(),null,1);
+}
+function exportObj(){return{game:'Signal Rules',version:2,session:S.sid,started:S.started,levels:S.done,events:S.log};}
+async function copyLog(noteEl){
+  const ta=$('#logText');ta.value=JSON.stringify(exportObj(),null,1);
+  let ok=false;
+  try{await navigator.clipboard.writeText(ta.value);ok=true;}
+  catch(_){try{ta.focus();ta.select();ok=document.execCommand('copy');}catch(__){}}
+  if(noteEl)noteEl.textContent=ok?'Copied the session log.':'Select the log text in Researcher view and copy it.';
+}
+$('#copyLog').addEventListener('click',()=>copyLog($('#copyNote')));
+$('#rvToggle').addEventListener('click',e=>{
+  const open=$('#rv').hidden;$('#rv').hidden=!open;e.currentTarget.setAttribute('aria-pressed',String(open));
+});
+function applyHash(){
+  const participant=location.hash==='#play';
+  $('#rvToggle').hidden=participant;
+  if(participant){$('#rv').hidden=true;$('#rvToggle').setAttribute('aria-pressed','false');}
+}
+window.addEventListener('hashchange',applyHash);
+
+newSession();resetBuilder();startLevel(0,'start');applyHash();
+})();
+</script>
+
+</body></html>
