@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: same field-notebook page as Hidden Gate. Left column is the street (map, stats, queue graph). Right column is the rule builder, the prediction, and the run log. Researcher view opens underneath. */
+/* Layout: same field-notebook page as Hidden Gate. Left column is the street (map, stats, queue graph). Right column is the rule builder, the run controls, and the run log. Researcher view opens underneath. */
 :root{
   --bg:#edf1f4; --surface:#fbfcfd; --surface-2:#e4eaef; --ink:#14202e; --muted:#53647a; --line:#c6d1db;
   --accent:#2850c8; --on-accent:#ffffff; --accent-soft:#dbe4fb;
@@ -128,7 +128,19 @@ button:disabled{cursor:not-allowed;opacity:.5}
 /* rule builder */
 .guess{display:flex;flex-direction:column;gap:12px}
 .hint{color:var(--muted);font-size:var(--fs-s)}
-.clause{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.8fr) minmax(0,.9fr);gap:8px}
+.clause{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:8px}
+.stars{color:var(--sig-y);letter-spacing:.06em;font-size:1.05em;white-space:nowrap}
+.stars .off{color:var(--line)}
+.goal .stars{margin-right:4px}
+.sense{padding:10px 18px 0;display:flex;flex-direction:column;gap:6px}
+.sense .lh{font-size:12px;color:var(--muted)}
+.srow{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;font-size:12.5px;padding:6px 10px;border-radius:10px;background:var(--surface-2)}
+.srow .who{font-family:var(--f-display);font-weight:800;color:var(--accent);min-width:1.4em}
+.srow .what{display:flex;flex-wrap:wrap;gap:2px 12px}
+.srow .chk{font-family:var(--f-mono);font-size:12px}
+.srow .chk.yes{color:var(--good);font-weight:600}.srow .chk.no{color:var(--muted)}
+.srow.fire{outline:2px solid var(--sig-y)}
+.bubble{font-family:var(--f-mono);font-size:12px;font-weight:600}
 select{width:100%;min-width:0;min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
 select:disabled{opacity:.5}
 .conn select{max-width:240px}
@@ -137,13 +149,12 @@ select:disabled{opacity:.5}
 .msg.bad{color:var(--bad)}
 .newsensor{font-size:var(--fs-s);padding:8px 12px;border-radius:10px;background:var(--accent-soft)}
 .sensors{margin:0;padding-left:18px;font-size:var(--fs-s);color:var(--muted);display:flex;flex-direction:column;gap:2px}
-.choices{display:flex;flex-wrap:wrap;gap:8px}
 .btnrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .seg{display:inline-flex;gap:0}
 .seg .ghost{border-radius:0;min-height:36px;padding:4px 12px;font-size:var(--fs-s)}
 .seg .ghost:first-child{border-radius:10px 0 0 10px}
 .seg .ghost:last-child{border-radius:0 10px 10px 0;margin-left:-1px}
-body.busy .guess select,body.busy .choices button,body.busy .pips button,body.busy .runs button{pointer-events:none;opacity:.55}
+body.busy .guess select,body.busy .pips button,body.busy .runs button{pointer-events:none;opacity:.55}
 
 /* run log */
 .runs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -200,6 +211,7 @@ textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border
             <div class="stat" id="stTurnedBox"><span>Turned away</span><b id="stTurned">0</b></div>
             <div class="stat" id="stWaitBox"><span>Average wait</span><b id="stWait">0.0 s</b></div>
           </div>
+          <div class="sense" id="sense" hidden aria-live="off"></div>
           <div class="chartbox">
             <p class="lh" id="chartTitle">Cars waiting in each line over time</p>
             <div id="chart"></div>
@@ -217,7 +229,6 @@ textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border
           <p class="hint">Every light runs this same rule. A light switches the green to the other road when…</p>
           <div class="clause">
             <select id="s1" aria-label="Sensor"></select>
-            <select id="c1" aria-label="At least or at most"><option value="ge">at least</option><option value="le">at most</option></select>
             <select id="v1" aria-label="Value" disabled></select>
           </div>
           <div class="conn">
@@ -229,7 +240,6 @@ textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border
           </div>
           <div class="clause" id="clause2" hidden>
             <select id="s2" aria-label="Second sensor"></select>
-            <select id="c2" aria-label="At least or at most"><option value="ge">at least</option><option value="le">at most</option></select>
             <select id="v2" aria-label="Second value" disabled></select>
           </div>
           <div class="preview" id="preview">Your rule: not set yet</div>
@@ -237,16 +247,15 @@ textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border
           <p class="hint">Each switch takes 2 seconds of yellow light, when no car moves. A green light lets one car through each second.</p>
         </form>
 
-        <section class="card guess" aria-label="Predict, then run">
-          <h2>Before you run it</h2>
-          <p class="hint" id="predictQ">Which line of cars do you think will get longest?</p>
-          <div class="choices" id="predict"></div>
+        <section class="card guess" aria-label="Run the lights">
           <div class="btnrow">
             <button type="button" class="primary" id="runBtn">Run the lights</button>
             <div class="seg" role="group" aria-label="Playback speed">
               <button type="button" class="ghost" data-speed="watch" aria-pressed="true">Watch</button>
               <button type="button" class="ghost" data-speed="fast" aria-pressed="false">Fast</button>
             </div>
+            <button type="button" class="ghost small" id="pauseBtn" hidden>Pause</button>
+            <button type="button" class="ghost small" id="stepBtn" hidden disabled>Step 1 s</button>
             <button type="button" class="ghost small" id="skipBtn" hidden>Skip to end</button>
           </div>
           <p class="msg" id="msg" role="status" aria-live="polite"></p>
@@ -279,11 +288,12 @@ textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border
               <tr><td>CT: Decomposition</td><td>Splits "when to switch" into a trigger and a guard (for example, a queue count AND a minimum green)</td><td>Number of conditions and how they are joined</td><td>Two-condition rules among clearing rules</td></tr>
               <tr><td>CT: Abstraction</td><td>Picks which sensors matter and ignores the rest</td><td>Sensors available vs. sensors used</td><td>Sensors in the clearing rule</td></tr>
               <tr><td>CT: Debugging</td><td>Reads the debrief after a failed run and changes the rule</td><td>Fields changed between runs; reruns with no change</td><td>One-change-at-a-time edits (%); runs to clear</td></tr>
+              <tr><td>CT: Tracing</td><td>Pauses a run and steps through it to watch each light check the rule</td><td>Pause and step events, with the second they happened</td><td>Steps per level; pausing after a failed run</td></tr>
               <tr><td>CT: Transfer</td><td>Takes a rule from two lights to three</td><td>First rule tried at level 5; runs at levels 4 and 5</td><td>Level 5 runs vs. level 4 runs</td></tr>
-              <tr><td>ST: Stocks and flows</td><td>Predicts which line of cars grows most</td><td>Prediction vs. the longest line in the run</td><td>Predictions correct (%)</td></tr>
+              <tr><td>ST: Stocks and flows</td><td>Watches lines fill while red and drain while green, and changes the rule for the line that overflowed</td><td>Longest line and first overflow in each run; the next rule edit</td><td>Edits after an overflow that give the overflowing line more green (coded from the log)</td></tr>
               <tr><td>ST: Feedback</td><td>Uses rules where a longer line gets green sooner (a balancing loop)</td><td>Sensor types in rules at levels 2 and 3, where a clock alone cannot clear</td><td>Queue sensors in clearing rules</td></tr>
               <tr><td>ST: Interconnection</td><td>Sees one light's rule waste another light's green (spillback)</td><td>Seconds light A was green but blocked by a full block</td><td>Blocked seconds across runs at levels 4 and 5</td></tr>
-              <tr><td>ST: Reinforcing loops</td><td>Predicts whether a rule will lock the square, then finds a rule that keeps the loop from closing</td><td>Gridlock prediction vs. outcome; time of gridlock; seconds cars blocked an intersection</td><td>Gridlock predictions correct; runs that gridlocked before clearing level 6</td></tr>
+              <tr><td>ST: Reinforcing loops</td><td>Finds a rule that keeps the loop of blocks from closing</td><td>Time of gridlock; seconds cars blocked an intersection</td><td>Runs that gridlocked before clearing level 6; whether gridlock repeats after the first one</td></tr>
             </tbody>
           </table>
         </div>
@@ -293,13 +303,13 @@ textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border
       <h3>Does it really measure CT and systems thinking? Open questions</h3>
       <ul>
         <li>Every metric above is a behavioral proxy. None is shown to be CT or systems thinking until it is checked against something outside the game.</li>
-        <li>Clearing a level can come from blind trial and error. Compare runs-to-clear with one-change edits and the prediction score before reading a clearing rule as a sign of reasoning.</li>
-        <li>The prediction has two to five choices, so guessing succeeds often, especially at level 1. Use think-aloud to see whether players reason from arrivals and green time.</li>
+        <li>Clearing a level can come from blind trial and error. Compare runs-to-clear with one-change edits and pause/step use before reading a clearing rule as a sign of reasoning.</li>
+        <li>There is no prediction step. An earlier version asked which line would get longest, but the busiest street was the right answer more than 90% of the time, and players won't predict that their own rule will fail. Systems-thinking evidence now comes from behavior in the log, so pair it with think-aloud sessions.</li>
         <li>Content check: ask two or three researchers to map each metric to a CT or systems-thinking definition and mark the ones that do not fit.</li>
         <li>Convergent check: compare scores with a validated CT test, Bebras-style items, or a stock-and-flow task (for example, a bathtub-dynamics item) from the same players.</li>
         <li>Transfer: levels 4 and 5 share structure. A rule that clears level 4 often clears level 5 too, so "fewer runs" may reflect reuse rather than new understanding. Log the first rule tried at level 5 to tell them apart.</li>
-        <li>Level 6 asks a yes/no gridlock question, so guessing is right half the time. The more telling signal is whether gridlocked runs stop happening once the player has seen one.</li>
-        <li>Confounds to rule out: prior traffic-game experience, reading load in the rule builder, and players who wait for the debrief instead of predicting.</li>
+        <li>On level 6, the telling signal is whether gridlocked runs stop happening once the player has seen one.</li>
+        <li>Confounds to rule out: prior traffic-game experience, reading load in the rule builder, and players who change the rule at random until the debrief turns green.</li>
       </ul>
     </div>
     <div>
@@ -321,9 +331,9 @@ const Sim=(function(){
   const SWITCH=2,HW=20,LETTER='ABCD';
   const range=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
   const SENSORS={
-    gt:{name:'Green has lasted',unit:'s',values:[1,2,3,4,5,6,8,10,12,15,20,25,30],help:'seconds since this light last turned green'},
-    rq:{name:'Cars waiting at red',unit:'cars',values:range(0,10),help:'cars lined up on the road that has the red light'},
-    gq:{name:'Cars waiting at green',unit:'cars',values:range(0,10),help:'cars still lined up on the road that has the green light'}
+    gt:{name:'Green has lasted at least',short:'Green time',cmp:'ge',unit:'s',values:[1,2,3,4,5,6,8,10,12,15,20,25,30],help:'seconds since this light last turned green'},
+    rq:{name:'Cars waiting at red: at least',short:'Waiting at red',cmp:'ge',unit:'cars',values:range(1,10),help:'cars lined up on the road that has the red light'},
+    gq:{name:'Cars waiting at green: at most',short:'Waiting at green',cmp:'le',unit:'cars',values:range(0,9),help:'cars still lined up on the road that has the green light (0 means that road is empty)'}
   };
   /* Main Street left to right through k lights; a side street top to bottom at each light. */
   function corridor(k,entryCap,sideCap,blockCap){
@@ -365,38 +375,40 @@ const Sim=(function(){
   }
   const LEVELS=[
     {name:'Quiet corner',diff:'Easy',net:corridor(1,10,10,4),sensors:['gt'],T:120,travel:2,
-      demand:[{until:999,r:{M0:0.35,S0:0.3}}],target:6,
+      demand:[{until:999,r:{M0:0.35,S0:0.3}}],stars:[7.5,6],
       brief:'One light, where Main Street meets a side street. So far the light has only a clock. Write a rule for when it switches.',
       note:'A line of cars is a stock. It fills as cars arrive and drains only while its light is green. A very short green wastes time on yellow. A very long green lets the other line overflow. The right timing balances the two flows.'},
     {name:'Busy main street',diff:'Easy',net:corridor(1,10,10,4),sensors:['gt','rq'],T:150,travel:2,
-      demand:[{until:999,r:{M0:0.55,S0:0.2}}],target:6,
+      demand:[{until:999,r:{M0:0.55,S0:0.2}}],stars:[8,6],
       brief:'Main Street now carries about three cars for every one on the side street. The light can count the cars waiting at red.',
       note:'A clock treats both roads the same, so it cannot give the busy road more time. A rule that counts waiting cars can. The longer a line gets, the sooner it gets green, which shrinks the line again. That is a balancing feedback loop.'},
     {name:'Rush hour',diff:'Medium',net:corridor(1,10,10,4),sensors:['gt','rq','gq'],T:160,travel:2,
-      demand:[{until:80,r:{M0:0.6,S0:0.15}},{until:999,r:{M0:0.15,S0:0.6}}],target:6,
+      demand:[{until:80,r:{M0:0.6,S0:0.15}},{until:999,r:{M0:0.15,S0:0.6}}],stars:[8,6],
       brief:'For the first half of the run, Main Street is busy. Then the side street takes over. The light can also see cars waiting at green.',
       note:'When demand shifts, a rule that senses the lines adapts by itself. A fixed plan tuned for one half would fail in the other. The system changed, and a rule built on feedback changed with it.'},
     {name:'Two lights',diff:'Hard',net:corridor(2,10,10,4),sensors:['gt','rq','gq'],T:160,travel:2,
-      demand:[{until:999,r:{M0:0.4,S0:0.2,S1:0.35}}],target:6.2,
+      demand:[{until:999,r:{M0:0.4,S0:0.2,S1:0.35}}],stars:[8,6.2],
       brief:'Cars leaving light A drive along a short block to light B. The block holds only 4 cars. If it is full, light A can be green and still let nobody through.',
       note:'The lights are connected. How fast light B drains the block decides whether light A’s green is useful. A rule that is good for one corner also has to work for the whole street.'},
     {name:'Three lights',diff:'Hard',net:corridor(3,10,10,4),sensors:['gt','rq','gq'],T:160,travel:2,
-      demand:[{until:999,r:{M0:0.4,S0:0.2,S1:0.3,S2:0.25}}],target:6.2,
+      demand:[{until:999,r:{M0:0.4,S0:0.2,S1:0.3,S2:0.25}}],stars:[8,6.2],
       brief:'Same street, one more light. Each side street has its own amount of traffic. Does your rule still work?',
       note:'The same rule ran at three different corners. A rule that responds to what each light senses carries over to new places. A rule tuned to one corner’s numbers often does not.'},
-    {name:'Gridlock square',diff:'Expert',net:square(10,5),sensors:['gt','rq','gq'],T:160,travel:2,boxBlock:true,predict:'gridlock',
-      demand:[{until:999,r:{Nin:0.36,Ein:0.36,Sin:0.36,Win:0.36}}],target:9.5,
+    {name:'Gridlock square',diff:'Expert',net:square(10,5),sensors:['gt','rq','gq'],T:160,travel:2,boxBlock:true,
+      demand:[{until:999,r:{Nin:0.36,Ein:0.36,Sin:0.36,Win:0.36}}],stars:[10,8],
       brief:'Four one-way streets circle a square, and each block between two lights holds 5 cars. Drivers here pull into the intersection on green even when there is no room ahead. A stuck car blocks the cross street, and that street feeds the next block around the square.',
       note:'Gridlock is a reinforcing loop. A full block strands a car in the intersection behind it. That car blocks the cross street, so the next block cannot drain and fills up too. Once the loop closes all the way around, nothing can ever move again. Rules that hand out short greens, and only when someone is waiting, drain each block before it fills.'}
   ];
   function test(c,x){const v=x[c.s];return c.cmp==='le'?v<=c.v:v>=c.v;}
-  function fires(rule,x){const a=test(rule.p,x);if(!rule.op)return a;const b=test(rule.q,x);return rule.op==='and'?(a&&b):(a||b);}
+  function parts(rule,x){const a=test(rule.p,x),b=rule.op?test(rule.q,x):null;return{a:a,b:b,fire:!rule.op?a:rule.op==='and'?(a&&b):(a||b)};}
+  function fires(rule,x){return parts(rule,x).fire;}
+  function starsFor(lv,R){if(R.overflow||R.gridlock)return 0;return 1+(R.avgWait<=lv.stars[0]+1e-9?1:0)+(R.avgWait<=lv.stars[1]+1e-9?1:0);}
   function rate(lv,t,id){for(const s of lv.demand)if(t<s.until)return s.r[id]||0;return 0;}
   function run(lv,rule){
     const net=lv.net,NL=net.lanes,NN=net.nodes.length,Q={},acc={},lane={};
     NL.forEach(l=>{Q[l.id]=[];acc[l.id]=l.acc0||0;lane[l.id]=l;});
     const app=net.nodes.map((_,i)=>({a:NL.find(l=>l.node===i&&l.app==='a').id,b:NL.find(l=>l.node===i&&l.app==='b').id}));
-    const N=net.nodes.map(nd=>({g:(nd.init||{}).g||'a',t:0,sw:0,box:null}));
+    const N=net.nodes.map(nd=>({g:(nd.init||{}).g||'a',t:0,sw:0,box:null,why:null}));
     const z=()=>Array(NN).fill(0);
     const R={overflow:0,firstOverflow:null,turnLog:[],admitted:0,exited:0,wait:0,switches:z(),blocked:z(),idle:z(),boxed:z(),maxQ:{},frames:[],gridlock:null};
     const arrive=(id,t)=>{const q=Q[id];
@@ -419,25 +431,29 @@ const Sim=(function(){
       for(const l of NL)for(const r of Q[l.id])if(r<=t)R.wait++;
       for(const n of N)if(n.box)R.wait++;
       if(lv.boxBlock&&!R.gridlock&&N.every(n=>n.box))R.gridlock={t:t};
+      const sense=[];
       for(let i=0;i<NN;i++){
         const n=N[i];
-        if(n.sw>0){n.sw--;if(n.sw===0){n.g=n.g==='a'?'b':'a';n.t=0;}continue;}
+        if(n.sw>0){n.sw--;if(n.sw===0){n.g=n.g==='a'?'b':'a';n.t=0;n.why=null;}sense.push(null);continue;}
         n.t++;
         const gid=app[i][n.g],rid=app[i][n.g==='a'?'b':'a'];
-        if(rule&&fires(rule,{gt:n.t,gq:Q[gid].length,rq:Q[rid].length})){n.sw=SWITCH;R.switches[i]++;}
+        const x={gt:n.t,gq:Q[gid].length,rq:Q[rid].length},pr=rule?parts(rule,x):{a:false,b:null,fire:false};
+        sense.push({g:n.g,green:gid,red:rid,gt:x.gt,gq:x.gq,rq:x.rq,a:pr.a,b:pr.b,fire:pr.fire});
+        if(pr.fire){n.sw=SWITCH;R.switches[i]++;n.why={a:pr.a,b:pr.b,from:gid};}
       }
-      const f={t:t,Q:{},Qt:{},L:N.map(n=>n.sw>0?'y':n.g),box:N.map(n=>n.box),bl:bl,gl:!!R.gridlock,
+      const f={t:t,Q:{},Qt:{},L:N.map(n=>n.sw>0?'y':n.g),box:N.map(n=>n.box),bl:bl,gl:!!R.gridlock,sense:sense,why:N.map(n=>n.sw>0?n.why:null),
         through:R.exited,turned:R.overflow,wait:R.admitted?R.wait/R.admitted:0};
       for(const l of NL){f.Q[l.id]=Q[l.id].length;f.Qt[l.id]=Q[l.id].filter(r=>r>t).length;R.maxQ[l.id]=Math.max(R.maxQ[l.id]||0,f.Q[l.id]);}
       R.frames.push(f);
     }
     R.avgWait=R.admitted?R.wait/R.admitted:0;
     R.lostShare=R.switches.reduce((a,b)=>a+b,0)*SWITCH/(lv.T*NN);
-    R.pass=R.overflow===0&&!R.gridlock&&R.avgWait<=lv.target+1e-9;
+    R.stars=starsFor(lv,R);
+    R.pass=R.stars>=1;
     return R;
   }
   const laneOf=(lv,id)=>lv.net.lanes.find(l=>l.id===id);
-  return {SENSORS:SENSORS,LEVELS:LEVELS,SWITCH:SWITCH,HW:HW,run:run,fires:fires,laneOf:laneOf};
+  return {SENSORS:SENSORS,LEVELS:LEVELS,SWITCH:SWITCH,HW:HW,run:run,fires:fires,parts:parts,laneOf:laneOf};
 })();
 </script>
 
@@ -461,11 +477,12 @@ function logEv(type,data){
   S.log.push(Object.assign({level:S.lvl+1,t:L?Math.round(performance.now()-L.t0):0,type:type},data||{}));
 }
 const lv=()=>LEVELS[S.lvl];
-const lanes=()=>lv().net.lanes;
-const qName=id=>laneOf(lv(),id).name;
 
 /* ---------- rule text ---------- */
 const unitTxt=(s,v)=>s==='gt'?v+' s':(v===1?'1 car':v+' cars');
+const optTxt=(s,v)=>s==='gq'&&v===0?'0 (the road is empty)':unitTxt(s,v);
+const shortClause=c=>c.s==='gt'?'green \u2265 '+c.v+' s':c.s==='rq'?c.v+'+ waiting at red':(c.v===0?'green road empty':'\u2264 '+c.v+' waiting at green');
+const starHtml=n=>'<span class="stars" role="img" aria-label="'+n+' of 3 stars">'+'\u2605'.repeat(n)+'<span class="off">'+'\u2605'.repeat(3-n)+'</span></span>';
 function clauseText(c){
   const w=c.cmp==='le'?'at most':'at least';
   if(c.s==='gt')return 'the green has lasted '+w+' '+c.v+' s';
@@ -481,20 +498,20 @@ function ruleDiff(a,b){if(!a||!b)return null;const x=fields(a),y=fields(b);let d
 function startLevel(idx,how){
   stopPlayback();
   S.lvl=idx;S.view='play';S.busy=false;document.body.classList.remove('busy');
-  S.L={idx:idx,t0:performance.now(),runs:[],prediction:null,lastRule:null,R:null,cleared:false};
+  S.L={idx:idx,t0:performance.now(),runs:[],lastRule:null,R:null,cleared:false};
   const fresh=lv().sensors.filter(s=>!S.seenSensors.has(s));
   lv().sensors.forEach(s=>S.seenSensors.add(s));
   const note=$('#newSensor');
   if(lv().boxBlock){note.hidden=false;note.innerHTML='<strong>New danger:</strong> drivers block the intersection when there is no room ahead. Any rule you already wrote is still here. Will it hold up?';}
-  else if(fresh.length&&idx>0){note.hidden=false;note.innerHTML='<strong>New sensor:</strong> '+fresh.map(s=>SENSORS[s].name).join(', ')+'. Your rule from the last level is still here.';}
+  else if(fresh.length&&idx>0){note.hidden=false;note.innerHTML='<strong>New sensor:</strong> '+fresh.map(s=>SENSORS[s].short).join(', ')+'. Your rule from the last level is still here.';}
   else note.hidden=true;
   const kept=draftRule();
   fillSensors(1);fillSensors(2);fillValues(1);fillValues(2);
   if(kept&&!draftRule())resetBuilder();
   updatePreview();
-  $('#sensorHelp').innerHTML=lv().sensors.map(s=>'<li><b>'+SENSORS[s].name+'</b>: '+SENSORS[s].help+'</li>').join('');
+  $('#sensorHelp').innerHTML=lv().sensors.map(s=>'<li><b>'+SENSORS[s].short+'</b>: '+SENSORS[s].help+'</li>').join('');
   logEv('level_start',{name:lv().name,how:how||'next',starting_rule:draftRule()?ruleText(draftRule()):null});
-  $('#stageStatus').textContent='Write a rule, make a prediction, then run the lights.';
+  $('#stageStatus').textContent='Write a rule, then run the lights.';
   $('#debrief').hidden=true;setMsg('','');
   render();
   drawFrame(null);
@@ -508,15 +525,15 @@ function render(){
     const l=lv();
     $('#levelLabel').textContent='Level '+(S.lvl+1)+' of '+NLV+' · '+l.name+' · '+l.diff;
     $('#brief').textContent=l.brief;
-    $('#goal').innerHTML='<b>Goal:</b> '+(l.boxBlock?'no gridlock, ':'')+'no car gets turned away, and the average wait stays at '+l.target+' s or less over '+clock(l.T)+' of traffic.';
-    renderPredict();renderRuns();
+    $('#goal').innerHTML='<b>Earn stars over '+clock(l.T)+' of traffic:</b><br>'+starHtml(1)+' nobody turned away'+(l.boxBlock?' and no gridlock':'')+' (clears the level)<br>'+starHtml(2)+' average wait '+l.stars[0]+' s or less<br>'+starHtml(3)+' average wait '+l.stars[1]+' s or less';
+    renderRuns();
   }else renderResult();
   renderRV();
 }
 function renderPips(){
   $('#pips').innerHTML=LEVELS.map((l,i)=>{
     const now=i===S.lvl&&S.view==='play',cls=(S.done[i]?'done':'')+(now?' now':'');
-    return '<li><button type="button" class="'+cls+'" data-lvl="'+i+'"'+(now?' aria-current="step"':'')+' title="Level '+(i+1)+': '+l.name+' ('+l.diff+')" aria-label="Level '+(i+1)+': '+l.name+', '+l.diff+(S.done[i]?', cleared':'')+'">'+(i+1)+'</button></li>';
+    return '<li><button type="button" class="'+cls+'" data-lvl="'+i+'"'+(now?' aria-current="step"':'')+' title="Level '+(i+1)+': '+l.name+' ('+l.diff+')'+(S.done[i]?' · '+'★'.repeat(S.done[i].stars):'')+'" aria-label="Level '+(i+1)+': '+l.name+', '+l.diff+(S.done[i]?', cleared with '+S.done[i].stars+' of 3 stars':'')+'">'+(i+1)+'</button></li>';
   }).join('');
 }
 $('#pips').addEventListener('click',e=>{
@@ -525,20 +542,6 @@ $('#pips').addEventListener('click',e=>{
   logEv('jump',{to:i+1});startLevel(i,'jump');
 });
 
-/* ---------- prediction ---------- */
-function predictOptions(){
-  if(lv().predict==='gridlock')return [{id:'yes',label:'Yes, it will lock up'},{id:'no',label:'No, traffic keeps moving'}];
-  return lanes().map(l=>({id:l.id,label:cap1(l.name),color:l.color}));
-}
-function renderPredict(){
-  const L=S.L;
-  $('#predictQ').textContent=lv().predict==='gridlock'?'Will your rule cause gridlock?':'Which line of cars do you think will get longest?';
-  $('#predict').innerHTML=predictOptions().map(o=>'<button type="button" class="ghost small" data-q="'+o.id+'" aria-pressed="'+(L.prediction===o.id)+'">'+(o.color?'<i style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var('+o.color+')"></i>':'')+esc(o.label)+'</button>').join('');
-}
-$('#predict').addEventListener('click',e=>{
-  const b=e.target.closest('[data-q]');if(!b||S.busy)return;
-  S.L.prediction=b.dataset.q;logEv('predict',{choice:b.dataset.q});renderPredict();setMsg('','');
-});
 
 /* ---------- rule builder ---------- */
 function fillSensors(i){
@@ -550,10 +553,10 @@ function fillValues(i){
   const s=$('#s'+i).value,v=$('#v'+i),cur=v.value;
   if(!s){v.innerHTML='<option value="">Value…</option>';v.disabled=true;return;}
   v.disabled=false;
-  v.innerHTML='<option value="">Value…</option>'+SENSORS[s].values.map(x=>'<option value="'+x+'">'+unitTxt(s,x)+'</option>').join('');
+  v.innerHTML='<option value="">Value…</option>'+SENSORS[s].values.map(x=>'<option value="'+x+'">'+optTxt(s,x)+'</option>').join('');
   if(SENSORS[s].values.map(String).indexOf(cur)>=0)v.value=cur;
 }
-function readClause(i){const s=$('#s'+i).value,v=$('#v'+i).value;if(!s||v==='')return null;return{s:s,cmp:$('#c'+i).value,v:+v};}
+function readClause(i){const s=$('#s'+i).value,v=$('#v'+i).value;if(!s||v==='')return null;return{s:s,cmp:SENSORS[s].cmp,v:+v};}
 function draftRule(){
   const p=readClause(1);if(!p)return null;
   const op=$('#op').value;if(!op)return{p:p,op:''};
@@ -562,15 +565,15 @@ function draftRule(){
 }
 function setRule(r){
   fillSensors(1);fillSensors(2);
-  $('#s1').value=r.p.s;$('#c1').value=r.p.cmp;fillValues(1);$('#v1').value=String(r.p.v);
+  $('#s1').value=r.p.s;fillValues(1);$('#v1').value=String(r.p.v);
   $('#op').value=r.op||'';$('#clause2').hidden=!r.op;
-  if(r.op){$('#s2').value=r.q.s;$('#c2').value=r.q.cmp;fillValues(2);$('#v2').value=String(r.q.v);}
+  if(r.op){$('#s2').value=r.q.s;fillValues(2);$('#v2').value=String(r.q.v);}
   else{$('#s2').value='';fillValues(2);}
   updatePreview();
 }
 function resetBuilder(){
   fillSensors(1);fillSensors(2);
-  $('#s1').value='';$('#s2').value='';$('#c1').value='ge';$('#c2').value='ge';$('#op').value='';
+  $('#s1').value='';$('#s2').value='';$('#op').value='';
   $('#clause2').hidden=true;fillValues(1);fillValues(2);updatePreview();
 }
 function updatePreview(){
@@ -638,6 +641,16 @@ function drawFrame(f){
       P.push(carRect(n.x,n.y,to.dir,to.color));
     }
   });
+  if(f&&S.L.lastRule){
+    const r=S.L.lastRule;
+    net.nodes.forEach((n,i)=>{
+      const w=f.why[i];if(!w)return;
+      const why=[];if(w.a)why.push(shortClause(r.p));if(r.op&&w.b)why.push(shortClause(r.q));
+      const txt='switch! \u2713 '+why.join(' + ');
+      const bw=txt.length*7.3+14,bx=Math.min(n.x+HW+6,vb[0]-bw-4),by=n.y-HW-34;
+      P.push('<g><rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="22" rx="6" fill="var(--surface)" stroke="var(--sig-y)" stroke-width="2"/><text class="bubble" x="'+(bx+7)+'" y="'+(by+15)+'" style="fill:var(--ink)">'+esc(txt)+'</text></g>');
+    });
+  }
   net.labels.forEach(t=>P.push('<text class="lbl m" x="'+t.x+'" y="'+t.y+'"'+(t.end?' text-anchor="end"':'')+'>'+t.t+'</text>'));
   if(f&&f.gl){
     const cx=vb[0]/2,cy=(net.nodes[0].y+net.nodes[2].y)/2;
@@ -650,10 +663,29 @@ function drawFrame(f){
   $('#stTurned').textContent=f?f.turned:0;
   $('#stTurnedBox').classList.toggle('bad',!!(f&&f.turned));
   $('#stWait').textContent=(f?f.wait:0).toFixed(1)+' s';
-  $('#stWaitBox').classList.toggle('bad',!!(f&&f.t>20&&f.wait>l.target));
+  $('#stWaitBox').classList.toggle('bad',!!(f&&f.t>20&&f.wait>l.stars[0]));
+  renderSense(f);
   $('#chartTitle').textContent=net.chartTitle;
   $('#chart').innerHTML=chartSVG(f&&R?R.frames.slice(0,f.t+1):[],l);
   $('#legend').innerHTML=net.chartLanes.map(id=>{const ln=laneOf(l,id);return '<span><i style="background:var('+ln.color+')"></i>'+cap1(ln.name)+(!ln.entry&&net.chartMax>ln.cap?' (holds '+ln.cap+')':'')+'</span>';}).join('');
+}
+function renderSense(f){
+  const box=$('#sense'),r=S.L.lastRule;
+  if(!f||!r){box.hidden=true;box.innerHTML='';return;}
+  const l=lv(),net=l.net;
+  const chk=(ok,c)=>'<span class="chk '+(ok?'yes':'no')+'">'+(ok?'\u2713':'\u2717')+' '+esc(shortClause(c))+'</span>';
+  box.hidden=false;
+  box.innerHTML='<p class="lh">What each light senses right now, and whether your rule says switch</p>'+net.nodes.map((n,i)=>{
+    const s=f.sense[i],who=n.label||'\u25CF';
+    if(!s){
+      const w=f.why[i],fromApp=w?laneOf(l,w.from).app:'a';
+      const to=net.lanes.find(x=>x.node===i&&x.app!==fromApp);
+      return '<div class="srow fire"><span class="who">'+who+'</span><span class="what"><span>Yellow: switching the green to '+esc(to.name)+'</span></span></div>';
+    }
+    return '<div class="srow'+(s.fire?' fire':'')+'"><span class="who">'+who+'</span><span class="what"><span>Green: '+esc(laneOf(l,s.green).name)+'</span><span>green for '+s.gt+' s</span><span>'+s.gq+' waiting at green</span><span>'+s.rq+' waiting at red</span>'
+      +chk(s.a,r.p)+(r.op?'<span class="chk no">'+r.op.toUpperCase()+'</span>'+chk(s.b,r.q):'')
+      +'<span class="chk '+(s.fire?'yes':'no')+'">\u2192 '+(s.fire?'switch':'stay')+'</span></span></div>';
+  }).join('');
 }
 function chartSVG(frames,l){
   const net=l.net,W=600,H=150,pl=28,pr=8,pt=10,pb=20,iw=W-pl-pr,ih=H-pt-pb,maxY=net.chartMax;
@@ -685,30 +717,38 @@ $('#runBtn').addEventListener('click',()=>{
   if(S.busy)return;
   const L=S.L,r=draftRule();
   if(!r){setMsg('Finish your rule first: pick a sensor and a value'+($('#op').value?' for both conditions.':'.'),'bad');return;}
-  if(!L.prediction){setMsg(lv().predict==='gridlock'?'Make a prediction first: will your rule cause gridlock?':'Make a prediction first: which line will get longest?','bad');return;}
   const R=run(lv(),r);
   L.R=R;
   const diff=ruleDiff(L.lastRule,r);
   const longest=longestLines(R);
-  const predOk=lv().predict==='gridlock'?((L.prediction==='yes')===!!R.gridlock):longest.indexOf(L.prediction)>=0;
-  const entry={n:L.runs.length+1,rule:r,text:ruleText(r),pass:R.pass,avgWait:+R.avgWait.toFixed(2),turned:R.overflow,prediction:L.prediction,predOk:predOk,longest:longest,
+  const entry={n:L.runs.length+1,rule:r,text:ruleText(r),pass:R.pass,stars:R.stars,avgWait:+R.avgWait.toFixed(2),turned:R.overflow,longest:longest,
     gridlock:R.gridlock?R.gridlock.t:null,fieldsChanged:diff,switches:R.switches.slice(),blocked:R.blocked.slice(),boxed:R.boxed.slice(),idle:R.idle.slice(),lostShare:+R.lostShare.toFixed(3),firstOverflow:R.firstOverflow};
   L.runs.push(entry);L.lastRule=r;
-  logEv('run',{run:entry.n,rule:entry.text,prediction:entry.prediction,prediction_ok:predOk,longest_line:longest,pass:R.pass,avg_wait:entry.avgWait,turned_away:R.overflow,
+  logEv('run',{run:entry.n,rule:entry.text,longest_line:longest,pass:R.pass,stars:R.stars,avg_wait:entry.avgWait,turned_away:R.overflow,
     gridlock_at:entry.gridlock,fields_changed:diff,switches:entry.switches,blocked_seconds:entry.blocked,box_blocked_seconds:entry.boxed,idle_green_seconds:entry.idle,yellow_share:entry.lostShare,first_overflow:R.firstOverflow});
   S.busy=true;document.body.classList.add('busy');
   $('#runBtn').disabled=true;$('#skipBtn').hidden=false;$('#debrief').hidden=true;setMsg('','');
-  $('#stageStatus').textContent='The lights are running your rule…';
+  S.paused=false;$('#pauseBtn').hidden=false;$('#pauseBtn').textContent='Pause';$('#stepBtn').hidden=false;$('#stepBtn').disabled=true;
+  $('#stageStatus').textContent='The lights are running your rule. Pause any time to see what each light senses.';
   play(0);
 });
 function play(t){
   const R=S.L.R;
   if(t>=R.frames.length){finishRun();return;}
+  S.playT=t;
   drawFrame(R.frames[t]);
+  if(S.paused)return;
   if(reduce&&S.speed==='watch'){timer=setTimeout(()=>play(t+4),60);return;}
-  timer=setTimeout(()=>play(t+1),S.speed==='fast'?28:110);
+  timer=setTimeout(()=>play(t+1),S.speed==='fast'?28:180);
 }
 $('#skipBtn').addEventListener('click',()=>{stopPlayback();finishRun();});
+$('#pauseBtn').addEventListener('click',()=>{
+  if(!S.busy)return;
+  if(!S.paused){stopPlayback();S.paused=true;$('#pauseBtn').textContent='Resume';$('#stepBtn').disabled=false;
+    $('#stageStatus').textContent='Paused. Step forward one second at a time and watch each light check your rule.';logEv('pause',{at:S.playT});}
+  else{S.paused=false;$('#pauseBtn').textContent='Pause';$('#stepBtn').disabled=true;$('#stageStatus').textContent='The lights are running your rule…';play(S.playT+1);}
+});
+$('#stepBtn').addEventListener('click',()=>{if(S.busy&&S.paused){logEv('step',{at:S.playT+1});play(S.playT+1);}});
 document.querySelector('.seg').addEventListener('click',e=>{
   const b=e.target.closest('[data-speed]');if(!b)return;
   S.speed=b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
@@ -718,39 +758,38 @@ function finishRun(){
   const L=S.L,R=L.R,e=L.runs[L.runs.length-1];
   drawFrame(R.frames[R.frames.length-1]);
   S.busy=false;document.body.classList.remove('busy');
-  $('#runBtn').disabled=false;$('#skipBtn').hidden=true;
-  $('#stageStatus').textContent=R.pass?'Every car got through on time.':R.gridlock?'Gridlock. Read what happened, change your rule, and try again.':'The run is over. Read what happened, change your rule, and try again.';
+  $('#runBtn').disabled=false;$('#skipBtn').hidden=true;$('#pauseBtn').hidden=true;$('#stepBtn').hidden=true;S.paused=false;
+  $('#stageStatus').textContent=R.pass?(R.stars===3?'Three stars!':'Level cleared with '+R.stars+' star'+(R.stars===1?'':'s')+'. Change your rule to try for more.'):R.gridlock?'Gridlock. Read what happened, change your rule, and try again.':'The run is over. Read what happened, change your rule, and try again.';
   const d=$('#debrief');d.hidden=false;d.className='debrief'+(R.pass?' ok':'');
-  d.innerHTML='<h3>'+(R.pass?'Level cleared':'What happened')+'</h3>'+diagnose(R,e).map(x=>'<p>'+x+'</p>').join('');
-  L.prediction=null;
+  d.innerHTML='<h3>'+(R.pass?starHtml(R.stars)+' Level cleared':'What happened')+'</h3>'+diagnose(R,e).map(x=>'<p>'+x+'</p>').join('');
   if(R.pass){
     L.cleared=true;
     const first=L.runs[0];
     const sum={level:L.idx+1,name:lv().name,runs:L.runs.length,failed_runs:L.runs.filter(x=>!x.pass).length,
       gridlock_runs:L.runs.filter(x=>x.gridlock!==null).length,
-      predictions_ok:L.runs.filter(x=>x.predOk).length,rule:e.text,avg_wait:e.avgWait,
+      rule:e.text,avg_wait:e.avgWait,stars:R.stars,
       sensors:Array.from(new Set([e.rule.p.s].concat(e.rule.op?[e.rule.q.s]:[]))),conditions:e.rule.op?2:1,
       one_change_edits:L.runs.filter(x=>x.fieldsChanged===1).length,edits:L.runs.filter(x=>x.fieldsChanged!==null).length,
       seconds:Math.round((performance.now()-L.t0)/1000),first_rule:first.text,first_result:first.pass?'cleared':(first.gridlock!==null?'gridlock':'failed')};
-    S.done[L.idx]=sum;logEv('level_end',sum);
+    if(!S.done[L.idx]||sum.stars>=S.done[L.idx].stars)S.done[L.idx]=sum;
+    logEv('level_end',sum);
     setTimeout(()=>{S.view='result';render();},reduce?0:900);
   }
   render();
 }
 function diagnose(R,e){
   const l=lv(),out=[];
-  if(l.predict==='gridlock'){
-    out.push('Your prediction: '+(e.prediction==='yes'?'gridlock':'no gridlock')+'. '+(e.predOk?'Right.':'Not this time.'));
-  }else{
-    let top=0;for(const k in R.maxQ)top=Math.max(top,R.maxQ[k]);
-    const mine=R.maxQ[e.prediction];
-    out.push('Your prediction: '+cap1(qName(e.prediction))+'. '+(!e.predOk?'The longest line was '+e.longest.map(qName).join(' or ')+' ('+top+' cars).'
-      :mine>=top?'Right, that line got longest ('+mine+' cars).'
-      :'Close enough: it reached '+mine+' cars, and the longest line reached '+top+'.'));
-  }
   const lost=Math.round(R.lostShare*100),idle=R.idle.reduce((a,b)=>a+b,0),blk=R.blocked.reduce((a,b)=>a+b,0),boxed=R.boxed.reduce((a,b)=>a+b,0);
   if(R.pass){
-    out.push('Average wait '+R.avgWait.toFixed(1)+' s (goal '+l.target+' s), and no car was turned away.');
+    out.push('Nobody was turned away, and the average wait was '+R.avgWait.toFixed(1)+' s.');
+    if(R.stars<3){
+      out.push('For '+(R.stars+1)+' stars, get the average wait to '+l.stars[R.stars===1?0:1]+' s or less.');
+      if(lost>=25)out.push('Hint: your lights spent '+lost+'% of the run on yellow. While a light switches, no car moves.');
+      else if(l.boxBlock&&boxed>=8)out.push('Hint: cars stuck in intersections blocked the cross streets for '+boxed+' s in total.');
+      else if(l.net.nodes.length>1&&blk>=8)out.push('Hint: lights were green but blocked by a full block for '+blk+' s in total.');
+      else if(idle>=8)out.push('Hint: for '+idle+' s, a light stayed green with nobody to let through while cars sat at the red.');
+      else out.push('Hint: pause a run and step through it. Watch when your rule makes each light switch.');
+    }
     return out;
   }
   if(R.gridlock){
@@ -765,14 +804,15 @@ function diagnose(R,e){
   if(R.firstOverflow){
     const fo=R.firstOverflow,ln=laneOf(l,fo.q);
     out.push('At '+clock(fo.t)+', '+ln.name+' filled up, so arriving cars were turned away ('+R.overflow+' in all).');
-    let red=0;for(let k=fo.t-1;k>=0&&R.frames[k].L[ln.node]!==ln.app;k--)red++;
+    // Count back the seconds this lane could not move: red, yellow, or the second its light was still finishing yellow.
+    let red=0;for(let k=fo.t-1;k>=0&&(R.frames[k].L[ln.node]!==ln.app||R.frames[k].sense[ln.node]===null);k--)red++;
     if(l.boxBlock&&boxed>=8)out.push('Cars stuck in the middle of intersections blocked the cross streets for '+boxed+' s in total.');
     else if(fo.q==='M0'&&l.net.nodes.length>1&&R.blocked[0]>=6)out.push('Light A was green but stuck for '+R.blocked[0]+' s in total, because the block ahead was full. A jam at light B spilled back to light A.');
     else if(red>=10)out.push('Its light had been red for '+red+' s. The other road held the green too long.');
     else if(lost>=25)out.push('Your lights spent '+lost+'% of the run on yellow. While a light switches, no car moves.');
     else out.push('Cars arrived there faster than its green time let them leave.');
   }else{
-    out.push('No car was turned away, but the average wait was '+R.avgWait.toFixed(1)+' s. The goal is '+l.target+' s or less.');
+    out.push('No car was turned away, but the average wait was '+R.avgWait.toFixed(1)+' s.');
     if(lost>=25)out.push('Your lights spent '+lost+'% of the run on yellow. While a light switches, no car moves.');
     else if(l.boxBlock&&boxed>=8)out.push('Cars stuck in the middle of intersections blocked the cross streets for '+boxed+' s in total. The square came close to gridlock.');
     else if(l.net.nodes.length>1&&blk>=8)out.push('Lights were green but blocked by a full block for '+blk+' s in total. One light’s rule is slowing down another.');
@@ -787,7 +827,7 @@ function renderRuns(){
   const L=S.L;
   $('#runCount').textContent=L.runs.length+' run'+(L.runs.length===1?'':'s');
   if(!L.runs.length){$('#runs').innerHTML='<li class="empty" style="display:block">No runs yet. Each run is a test of your rule.</li>';return;}
-  $('#runs').innerHTML=L.runs.slice().reverse().map(x=>'<li><span class="mark '+(x.pass?'ok':'no')+'" aria-label="'+(x.pass?'Cleared':'Not cleared')+'">'+(x.pass?'✓':'✕')+'</span><span class="rt">#'+x.n+' switch when '+esc(x.text)+'</span><button type="button" class="ghost small" data-load="'+(x.n-1)+'" aria-label="Load rule from run '+x.n+'">Load</button><span class="meta">'+(x.gridlock!==null?'gridlock at '+clock(x.gridlock)+' · ':'')+'wait '+x.avgWait.toFixed(1)+' s · '+x.turned+' turned away · prediction '+(x.predOk?'✓':'✕')+'</span></li>').join('');
+  $('#runs').innerHTML=L.runs.slice().reverse().map(x=>'<li><span class="mark '+(x.pass?'ok':'no')+'">'+(x.pass?starHtml(x.stars):'<span aria-label="Not cleared">✕</span>')+'</span><span class="rt">#'+x.n+' switch when '+esc(x.text)+'</span><button type="button" class="ghost small" data-load="'+(x.n-1)+'" aria-label="Load rule from run '+x.n+'">Load</button><span class="meta">'+(x.gridlock!==null?'gridlock at '+clock(x.gridlock)+' · ':'')+'wait '+x.avgWait.toFixed(1)+' s · '+x.turned+' turned away</span></li>').join('');
 }
 $('#runs').addEventListener('click',e=>{
   const b=e.target.closest('[data-load]');if(!b||S.busy)return;
@@ -805,27 +845,27 @@ function renderResult(){
       +'<dl class="kv">'
       +'<dt>Runs</dt><dd>'+d.runs+'</dd>'
       +(l.boxBlock?'<dt>Runs that gridlocked</dt><dd>'+d.gridlock_runs+'</dd>':'')
-      +'<dt>Predictions right</dt><dd>'+d.predictions_ok+' of '+d.runs+'</dd>'
       +'<dt>Edits that changed one thing</dt><dd>'+d.one_change_edits+' of '+d.edits+'</dd>'
-      +'<dt>Average wait</dt><dd>'+d.avg_wait.toFixed(1)+' s (goal '+l.target+' s)</dd>'
+      +'<dt>Stars</dt><dd>'+starHtml(d.stars)+'</dd>'
+      +'<dt>Average wait</dt><dd>'+d.avg_wait.toFixed(1)+' s (2 stars at '+l.stars[0]+' s, 3 stars at '+l.stars[1]+' s)</dd>'
       +'<dt>Time</dt><dd>'+clock(d.seconds)+'</dd></dl>'
       +'<div>'+chartSVG(S.L.R.frames,l)+'</div>'
       +'<p class="coach"><strong>The system:</strong> '+l.note+'</p>'
       +'<div class="btnrow">'+(last?'<button type="button" class="primary" data-act="final">See my summary</button>':'<button type="button" class="primary" data-act="next">Go to level '+(S.lvl+2)+'</button>')
-      +'<button type="button" class="ghost" data-act="replay">Play this level again</button></div>';
+      +'<button type="button" class="ghost" data-act="replay">'+(d.stars<3?'Try for 3 stars':'Play this level again')+'</button></div>';
   }else{
-    const tot=LEVELS.map((_,i)=>S.done[i]).filter(Boolean),runs=tot.reduce((a,x)=>a+x.runs,0),preds=tot.reduce((a,x)=>a+x.predictions_ok,0);
+    const tot=LEVELS.map((_,i)=>S.done[i]).filter(Boolean),runs=tot.reduce((a,x)=>a+x.runs,0);
     const d4=S.done[3],d5=S.done[4],d6=S.done[5];
     let transfer='';
     if(d4&&d5)transfer+='<p class="coach">Levels 4 and 5 have the same shape: connected lights in a row. You needed '+d4.runs+' run'+(d4.runs===1?'':'s')+' at level 4 and '+d5.runs+' at level 5. '+(d5.first_rule===d4.rule?'You started level 5 with your level 4 rule, which is reusing what worked.':'You started level 5 with a different rule from the one that cleared level 4.')+'</p>';
     if(d5&&d6)transfer+='<p class="coach">At level 6 your first rule was "switch when '+esc(d6.first_rule)+'", and that run '+(d6.first_result==='gridlock'?'ended in gridlock':d6.first_result==='cleared'?'cleared the square':'did not clear')+'. '+(d6.first_rule!==d5.rule?'':d6.first_result==='cleared'?'That was your level 5 rule, and it carried over to a loop of streets.':'That was your level 5 rule. A rule that works on a straight street can fail once the streets form a loop.')+'</p>';
     box.innerHTML='<p class="kicker">'+(allDone?'All '+NLV+' levels cleared':'Summary so far')+'</p>'
       +'<h2 id="resultTitle" tabindex="-1">How you played</h2>'
-      +'<div class="tablewrap"><table><thead><tr><th>Level</th><th>Clearing rule</th><th>Runs</th><th>Predictions</th><th>Wait</th></tr></thead><tbody>'
-      +LEVELS.map((l,i)=>{const x=S.done[i];return '<tr><td>'+(i+1)+'. '+l.name+'</td><td>'+(x?'switch when '+esc(x.rule):'not cleared')+'</td><td>'+(x?x.runs:'')+'</td><td>'+(x?x.predictions_ok+'/'+x.runs:'')+'</td><td>'+(x?x.avg_wait.toFixed(1)+' s':'')+'</td></tr>';}).join('')
+      +'<div class="tablewrap"><table><thead><tr><th>Level</th><th>Clearing rule</th><th>Runs</th><th>Wait</th><th>Stars</th></tr></thead><tbody>'
+      +LEVELS.map((l,i)=>{const x=S.done[i];return '<tr><td>'+(i+1)+'. '+l.name+'</td><td>'+(x?'switch when '+esc(x.rule):'not cleared')+'</td><td>'+(x?x.runs:'')+'</td><td>'+(x?x.avg_wait.toFixed(1)+' s':'')+'</td><td>'+(x?starHtml(x.stars):'')+'</td></tr>';}).join('')
       +'</tbody></table></div>'
       +transfer
-      +'<p class="coach">Predictions right: '+preds+' of '+runs+'. Predicting which line grows, or whether the square will lock up, means picturing cars flowing in and out over time. That is the heart of systems thinking.</p>'
+      +'<p class="coach">Stars: '+tot.reduce((a,x)=>a+x.stars,0)+' of '+(3*NLV)+'. Total runs: '+runs+'. Each run tested an idea about how cars flow through the lights, and each change you made was a guess about how the whole street would respond.</p>'
       +'<div class="btnrow"><button type="button" class="primary" data-act="again">Play again</button><button type="button" class="ghost" data-act="copy">Copy session log</button><span class="hint" id="copyNote2"></span></div>';
   }
   const t=$('#resultTitle');if(t)t.focus();
@@ -850,7 +890,6 @@ function renderRV(){
     ['Level',(L.idx+1)+'. '+lv().name+' ('+lv().diff+')'],
     ['Runs',String(runs.length)],
     ['Failed runs',String(runs.filter(x=>!x.pass).length)],
-    ['Predictions right',runs.filter(x=>x.predOk).length+' of '+runs.length],
     ['One-change edits',edits.filter(x=>x.fieldsChanged===1).length+' of '+edits.length],
     ['Reruns with no change',String(edits.filter(x=>x.fieldsChanged===0).length)],
     ['Last rule',last?last.text:'none'],
@@ -859,7 +898,8 @@ function renderRV(){
     ['Last run: green but blocked ahead',last?sum(last.blocked)+' s':'-']
   ];
   if(lv().boxBlock)rows.push(['Last run: gridlock',last?(last.gridlock!==null?'at '+clock(last.gridlock):'none'):'-'],['Runs that gridlocked',String(runs.filter(x=>x.gridlock!==null).length)]);
-  rows.push(['Levels cleared',Object.keys(S.done).length+' of '+NLV]);
+  rows.push(['Last run: stars',last?String(last.stars):'-'],['Pauses / steps this level',S.log.filter(e=>e.level===L.idx+1&&e.type==='pause').length+' / '+S.log.filter(e=>e.level===L.idx+1&&e.type==='step').length]);
+  rows.push(['Levels cleared',Object.keys(S.done).length+' of '+NLV],['Stars',LEVELS.reduce((a,_,i)=>a+(S.done[i]?S.done[i].stars:0),0)+' of '+(3*NLV)]);
   $('#rvLive').innerHTML=rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>').join('');
   $('#logText').value=JSON.stringify(exportObj(),null,1);
 }
