@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>
+Signal Rules v3
+</title>
+
+<style>
+
+/* SECTION 2 GOES HERE */
+:root{
+
+--blue:#4f7cff;
+--blue-dark:#355ee0;
+
+--grid:#e7edf8;
+--paper:#fafcff;
+
+--success:#1f9254;
+--danger:#c53f3f;
+
+}
+
+*{
+box-sizing:border-box;
+}
+
+body{
+
+margin:0;
+
+font-family:
+Verdana,
+sans-serif;
+
+background:
+linear-gradient(
+var(--grid) 1px,
+transparent 1px),
+
+linear-gradient(
+90deg,
+var(--grid) 1px,
+transparent 1px);
+
+background-size:
+24px 24px;
+
+background-color:
+var(--paper);
+
+}
+
+#app{
+
+max-width:1200px;
+
+margin:auto;
+
+padding:24px;
+
+}
+
+h1,h2,h3{
+margin-top:0;
+}
+
+.card{
+
+background:white;
+
+border-radius:16px;
+
+padding:24px;
+
+box-shadow:
+0 8px 20px
+rgba(0,0,0,.08);
+
+margin-bottom:18px;
+
+}
+
+.btn{
+
+border:none;
+
+padding:
+12px 20px;
+
+border-radius:12px;
+
+cursor:pointer;
+
+background:
+var(--blue);
+
+color:white;
+
+font-size:16px;
+
+}
+
+.btn:hover{
+
+background:
+var(--blue-dark);
+
+}
+
+.level-grid{
+
+display:grid;
+
+grid-template-columns:
+repeat(
+auto-fit,
+minmax(180px,1fr)
+);
+
+gap:12px;
+
+margin-top:20px;
+
+}
+
+.level-btn{
+
+padding:20px;
+
+border:none;
+
+border-radius:12px;
+
+cursor:pointer;
+
+background:#eef3ff;
+
+font-size:15px;
+
+}
+
+.level-btn:hover{
+
+background:#dce6ff;
+
+}
+
+.choice{
+
+padding:14px;
+
+border:
+2px solid #d8e0ef;
+
+border-radius:12px;
+
+cursor:pointer;
+
+margin-bottom:10px;
+
+}
+
+.choice:hover{
+
+background:#f4f7ff;
+
+}
+
+.choice.selected{
+
+border-color:var(--blue);
+
+background:#eef3ff;
+
+}
+
+.feedback{
+
+padding:16px;
+
+border-radius:10px;
+
+margin-top:18px;
+
+}
+
+.good{
+
+background:#eaf8ee;
+
+border-left:
+4px solid
+var(--success);
+
+}
+
+.bad{
+
+background:#fdecec;
+
+border-left:
+4px solid
+var(--danger);
+
+}
+
+.traffic-scene{
+
+background:#eef3ff;
+
+border-radius:12px;
+
+padding:20px;
+
+margin-top:16px;
+
+}
+
+.light-box{
+
+width:80px;
+
+margin:auto;
+
+padding:10px;
+
+background:#222;
+
+border-radius:12px;
+
+text-align:center;
+
+}
+
+.light{
+
+width:30px;
+height:30px;
+
+border-radius:50%;
+
+margin:8px auto;
+
+background:#444;
+
+transition:.3s;
+
+}
+
+.light.red.active{
+background:#ef4444;
+box-shadow:0 0 15px #ef4444;
+}
+
+.light.green.active{
+background:#22c55e;
+box-shadow:0 0 15px #22c55e;
+}
+
+.queue{
+
+margin-top:16px;
+
+padding:12px;
+
+background:white;
+
+border-radius:8px;
+
+}
+
+.car-row{
+
+font-size:24px;
+
+min-height:36px;
+
+}
+
+.level-btn.active{
+
+background:#4f7cff;
+
+color:white;
+
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="app">
+
+<!-- LEVEL MAP -->
+<div
+id="levelMap"
+class="card">
+
+<h1>
+🎉 Metroville Festival
+</h1>
+
+<p>
+
+The annual Metroville Festival is bringing thousands
+of visitors into the city.
+
+As a Transportation Engineer, your job is to keep
+traffic moving and prevent congestion before the
+festival begins.
+
+Complete missions to help the city prepare.
+
+</p>
+
+<div class="level-grid">
+
+<button
+class="level-btn"
+onclick="loadLevel(0)">
+
+Training
+
+<br>
+
+Traffic Detective
+
+</button>
+
+<button
+class="level-btn"
+onclick="loadLevel(1)">
+
+Day 1
+
+<br>
+
+A Growing Queue
+
+</button>
+
+<button
+class="level-btn"
+onclick="loadLevel(2)">
+
+Day 2
+
+<br>
+
+Too Much Traffic
+
+</button>
+
+<button
+class="level-btn"
+onclick="loadLevel(3)">
+
+Day 3
+
+<br>
+
+The Broken Light
+
+</button>
+
+<button
+class="level-btn"
+onclick="loadLevel(4)">
+
+Day 4
+
+<br>
+
+The Bottleneck
+
+</button>
+
+<button
+class="level-btn"
+onclick="loadLevel(5)">
+
+Day 5
+
+<br>
+
+A Familiar Pattern
+
+</button>
+
+<button
+class="level-btn"
+onclick="loadLevel(6)">
+
+Festival Day
+
+<br>
+
+Citywide Gridlock
+
+</button>
+
+</div>
+
+</div>
+<!-- GAME CONTENT -->
+<div id="gameScreen"></div>
+
+<!-- RESEARCH PANEL -->
+<div id="researchPanel"></div>
+
+</div>
+
+<script>
+
+/* SECTION 4 GOES HERE */
+
+let currentLevel = 0;
+
+function loadLevel(level){
+
+currentLevel = level;
+
+document
+.querySelectorAll(".level-btn")
+.forEach(btn=>{
+
+btn.classList.remove(
+"active"
+);
+
+});
+
+document
+.querySelectorAll(".level-btn")[level]
+.classList.add(
+"active"
+);
+
+switch(level){
+
+case 0:
+showLevel0();
+break;
+
+case 1:
+showLevel1();
+break;
+
+case 2:
+showLevel2();
+break;
+
+case 3:
+showLevel3();
+break;
+
+case 4:
+showLevel4();
+break;
+
+case 5:
+showLevel5();
+break;
+
+case 6:
+showLevel6();
+break;
+
+}
+
+}
+
+let simulationTimer;
+
+function startTrafficSimulation(
+containerId,
+mainArrival,
+sideArrival
+){
+
+clearInterval(
+simulationTimer
+);
+
+const container =
+document.getElementById(
+containerId
+);
+
+let time = 0;
+
+let mainQueue = 0;
+let sideQueue = 0;
+
+let green = true;
+
+container.innerHTML =
+
+`
+<div class="traffic-scene">
+
+<div class="light-box">
+
+<div
+id="${containerId}-red"
+class="light red">
+</div>
+
+<div
+id="${containerId}-green"
+class="light green active">
+</div>
+
+</div>
+
+<h3 id="${containerId}-timer">
+⏱ 0s
+</h3>
+
+<p id="${containerId}-status">
+
+🟢 Main Road Green
+
+</p>
+
+<div class="queue">
+
+<strong>
+Main Road Queue
+</strong>
+
+<div
+id="${containerId}-main"
+class="car-row">
+</div>
+
+</div>
+
+<div class="queue">
+
+<strong>
+Side Road Queue
+</strong>
+
+<div
+id="${containerId}-side"
+class="car-row">
+</div>
+
+</div>
+
+</div>
+`;
+
+const redLight =
+document.getElementById(
+`${containerId}-red`
+);
+
+const greenLight =
+document.getElementById(
+`${containerId}-green`
+);
+
+const mainDisplay =
+document.getElementById(
+`${containerId}-main`
+);
+
+const sideDisplay =
+document.getElementById(
+`${containerId}-side`
+);
+
+const timerDisplay =
+document.getElementById(
+`${containerId}-timer`
+);
+
+const statusDisplay =
+document.getElementById(
+`${containerId}-status`
+);
+
+simulationTimer =
+setInterval(()=>{
+
+time++;
+
+mainQueue += mainArrival;
+sideQueue += sideArrival;
+
+if(green){
+
+mainQueue =
+Math.max(
+0,
+mainQueue - 3
+);
+
+}else{
+
+sideQueue =
+Math.max(
+0,
+sideQueue - 3
+);
+
+}
+
+if(time % 3 === 0){
+
+green = !green;
+
+statusDisplay.innerHTML =
+green
+? "🟢 Main Road Green"
+: "🔴 Side Road Green";
+
+redLight.classList.toggle(
+"active"
+);
+
+greenLight.classList.toggle(
+"active"
+);
+
+}
+
+timerDisplay.innerHTML =
+`⏱ ${time}s`;
+
+mainDisplay.innerHTML =
+"🚗".repeat(
+Math.min(mainQueue,12)
+);
+
+sideDisplay.innerHTML =
+"🚗".repeat(
+Math.min(sideQueue,12)
+);
+
+if(time >= 12){
+
+clearInterval(
+simulationTimer
+);
+
+}
+
+},500);
+
+}
+
+function showLevel0(){
+
+gameScreen.innerHTML =
+
+`
+<div class="card">
+
+<h1>
+Traffic Detective
+</h1>
+
+<p>
+
+Which road will become congested?
+
+</p>
+
+<div class="choice"
+onclick="level0Answer('main')">
+
+🚗 Main Road:
+5 arrivals/min
+
+</div>
+
+<div class="choice"
+onclick="level0Answer('side')">
+
+🚗 Side Road:
+1 arrival/min
+
+</div>
+
+<div id="level0Feedback">
+
+</div>
+
+</div>
+`;
+
+}
+
+function level0Answer(answer){
+
+if(answer==="main"){
+
+level0Feedback.innerHTML =
+
+`
+<div class="feedback good">
+
+✅ Correct
+
+More vehicles arrive on
+Main Road.
+
+</div>
+`;
+
+}else{
+
+level0Feedback.innerHTML =
+
+`
+<div class="feedback bad">
+
+Not quite.
+
+Try again.
+
+</div>
+`;
+
+}
+
+}
+
+// ===================================
+// LEVEL 1 - ADAPTIVE SIGNAL
+// ===================================
+
+let selectedStrategy = null;
+
+function showLevel1(){
+
+selectedStrategy = null;
+
+gameScreen.innerHTML = `
+<div class="card">
+
+<h1>🚦 Day 1 - A Growing Queue</h1>
+<p>
+Morning commuters are arriving faster
+than expected.
+
+Can you keep Main Street moving?
+</p>
+
+<div
+class="choice"
+onclick="chooseStrategy(this,'quick')">
+
+🚦 Quick Response
+<br>
+<small>
+Switch when 5 cars are waiting
+</small>
+
+</div>
+
+<div
+class="choice"
+onclick="chooseStrategy(this,'long')">
+
+⏱ Long Green
+<br>
+<small>
+Keep green lights on longer
+</small>
+
+</div>
+
+<div
+class="choice"
+onclick="chooseStrategy(this,'demand')">
+
+📊 Demand Aware
+<br>
+<small>
+React to incoming traffic
+</small>
+
+</div>
+
+<button
+class="btn"
+onclick="runLevel1()">
+
+Run Simulation
+
+</button>
+
+<div id="level1Output"></div>
+
+</div>
+`;
+
+}
+
+function chooseStrategy(
+element,
+strategy
+){
+
+selectedStrategy = strategy;
+
+document
+.querySelectorAll(".choice")
+.forEach(c=>{
+
+c.classList.remove("selected");
+
+});
+
+element.classList.add(
+"selected"
+);
+
+}
+
+function runLevel1(){
+
+if(!selectedStrategy){
+
+level1Output.innerHTML = `
+<div class="feedback bad">
+Select a strategy first.
+</div>
+`;
+
+return;
+
+}
+
+startTrafficSimulation(
+"level1Output",
+4,
+1
+);
+
+}
+
+
+// ===================================
+// LEVEL 2 - DEMAND IMBALANCE
+// ===================================
+
+function showLevel2(){
+
+gameScreen.innerHTML = `
+<div class="card">
+
+<h1>📊 Day 2 - Too Much Traffic</h1>
+<p>
+
+A popular shopping district
+is attracting unexpected traffic.
+
+Identify what is causing the congestion.
+
+</p>
+
+<button
+class="btn"
+onclick="
+startTrafficSimulation(
+'level2Output',
+6,
+1
+)
+">
+
+Run Scenario
+
+</button>
+
+<div id="level2Output"></div>
+
+</div>
+`;
+
+}
+
+
+// ===================================
+// LEVEL 3 - BROKEN SIGNAL
+// ===================================
+
+function showLevel3(){
+
+gameScreen.innerHTML = `
+<div class="card">
+
+<h1>🔧 Day 3 - The Broken Light</h1>
+<p>
+
+Drivers are reporting unusually long waits.
+
+Your team suspects a signal rule is wrong.
+
+</p>
+
+<button
+class="btn"
+onclick="
+startTrafficSimulation(
+'level3Output',
+8,
+1
+)
+">
+
+Run Simulation
+
+</button>
+
+<div id="level3Output"></div>
+
+</div>
+`;
+
+}
+
+
+// ===================================
+// LEVEL 4 - INTERSECTIONS
+// ===================================
+
+function showLevel4(){
+
+gameScreen.innerHTML = `
+<div class="card">
+
+<h1>🚧 Level 4 - Intersections</h1>
+
+<p>
+
+Road construction is forcing vehicles
+through a narrow route.
+
+Find where congestion begins.
+
+</p>
+
+<button
+class="btn"
+onclick="
+startTrafficSimulation(
+'level4Output',
+4,
+4
+)
+">
+
+Run Simulation
+
+</button>
+
+<div id="level4Output"></div>
+
+</div>
+`;
+
+}
+
+
+// ===================================
+// LEVEL 5 - TRANSFER
+// ===================================
+
+function showLevel5(){
+
+gameScreen.innerHTML = `
+<div class="card">
+
+<h1>🔄 Day 5 - A Familiar Pattern</h1>
+<p>
+
+This traffic pattern looks familiar.
+
+Can you use knowledge from previous missions?
+
+</p>
+
+<button
+class="btn"
+onclick="
+startTrafficSimulation(
+'level5Output',
+4,
+2
+)
+">
+
+Run Simulation
+
+</button>
+
+<div id="level5Output"></div>
+
+</div>
+`;
+
+}
+
+
+// ===================================
+// LEVEL 6 - GRIDLOCK
+// ===================================
+
+function showLevel6(){
+
+gameScreen.innerHTML = `
+<div class="card">
+
+<h1>🎉 Festival Day - Citywide Gridlock</h1>
+<p>
+
+The festival begins today.
+
+Thousands of visitors are entering the city.
+
+Prevent citywide gridlock.
+</p>
+
+<button
+class="btn"
+onclick="
+startTrafficSimulation(
+'level6Output',
+10,
+8
+)
+">
+
+Run Simulation
+
+</button>
+
+<div id="level6Output"></div>
+
+</div>
+`;
+
+}
+loadLevel(0);
+</script>
+
+</body>
+</html>
