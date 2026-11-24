@@ -238,7 +238,6 @@ tr.strong td:first-child{box-shadow:inset 3px 0 0 var(--good)}
 .tier{display:inline-block;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:6px;margin-top:4px}
 .tier.strong{background:var(--good);color:var(--surface)}
 .tier.partial{border:1px solid var(--line);color:var(--muted)}
-td.score{font-family:var(--f-mono);font-size:12px;min-width:150px}
 .rv details{font-size:var(--fs-s)}
 .rvdata{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 .rvdata .btnrow{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
@@ -366,10 +365,10 @@ textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border
       </div>
       <div>
         <h3>What the game can measure</h3>
-        <p class="hint">Highlighted rows are strong measures: the game gives the player a real choice, and the score can be compared with what random play would produce. Partial rows are worth logging, but read them with the limit shown. Scores update live from this session.</p>
+        <p class="hint">How player actions in the game connect to each skill. Highlighted rows are the strongest links: the game gives the player a real choice, and the behavior can be compared with what random play would produce. Partial rows are worth looking at, but read them with the limit shown.</p>
         <div class="tablewrap">
           <table>
-            <thead><tr><th>Skill</th><th>Player does</th><th>Game logs</th><th>This session</th><th>Why it can be trusted</th></tr></thead>
+            <thead><tr><th>Skill</th><th>Player does</th><th>Game logs</th><th>Why it can be trusted</th></tr></thead>
             <tbody id="rvSkills"></tbody>
           </table>
         </div>
@@ -388,11 +387,11 @@ textarea{width:100%;font-family:var(--f-mono);font-size:12px;padding:10px;border
     <div>
       <h3>Does it really measure CT and systems thinking? Open questions</h3>
       <ul>
-        <li>Every score above is a behavioral proxy. None is shown to be CT or systems thinking until it is checked against something outside the game.</li>
-        <li>The debrief names the main problem after each run, so the stocks-and-flows and interconnection scores partly measure following a hint. Comparing players who see that line with players who don’t would separate the two.</li>
-        <li>The chance rates (29% for a one-part fix on Day 3, 68% gridlock on Festival Day, and the per-edit chance of moving the green the right way) come from testing every possible rule in the simulation. Real players do not pick rules uniformly, so treat them as a reference point, not an exact baseline. Recompute them if a level is retuned.</li>
-        <li>Content check: ask two or three researchers to map each score to a CT or systems-thinking definition and mark the ones that do not fit.</li>
-        <li>Convergent check: compare scores with a validated CT test, Bebras-style items, or a stock-and-flow task (for example, a bathtub-dynamics item) from the same players.</li>
+        <li>Every link above is a behavioral proxy. None is shown to be CT or systems thinking until it is checked against something outside the game.</li>
+        <li>The debrief names the main problem after each run, so stocks-and-flows and interconnection behavior partly reflects following a hint. Comparing players who see that line with players who don’t would separate the two.</li>
+        <li>The chance rates (29% for a one-part fix on Day 3, 68% gridlock on Festival Day) come from testing every possible rule in the simulation. Real players do not pick rules uniformly, so treat them as a reference point, not an exact baseline. Recompute them if a level is retuned.</li>
+        <li>Content check: ask two or three researchers to map each skill link to a CT or systems-thinking definition and mark the ones that do not fit.</li>
+        <li>Convergent check: compare in-game behavior with a validated CT test, Bebras-style items, or a stock-and-flow task (for example, a bathtub-dynamics item) from the same players.</li>
         <li>Confounds to rule out: prior traffic-game experience, reading load in the rule builder, and players who change the rule at random until the debrief turns green.</li>
       </ul>
     </div>
@@ -1254,15 +1253,9 @@ $('#result').addEventListener('click',e=>{
   else if(act==='copy')copyLog($('#copyNote2'));
 });
 
-/* ---------- measures ----------
-   Each run logs its average green length and its main problem, so the direction of the next edit can be judged:
-   too much yellow means greens were too short; a line starved at red, a green with nobody to serve, or gridlock means
-   greens were too long. Chance rates come from running every possible rule through the simulation. */
-const CHANCE={oneEditFix:7/24,gridlock:0.68};
-/* Average green length of every possible rule on each day, as 21 quantiles (0%, 5%, … 100%).
-   After a run with average green m, a random rule lands above m with probability ≈ share of quantiles above m.
-   This corrects for regression to the mean: after an extreme run, most changes move back toward the middle. */
-const GREEN_Q={quiet:[1,1,1.9,1.9,2.9,3.8,3.8,4.8,5.6,5.6,7.4,9.1,9.1,11.6,13.3,13.3,18.3,22.4,22.4,28.5,28.5],busy:[1,1,1.1,1.4,1.9,2.9,4.9,5.7,7.5,8.1,9.7,11.8,13.2,14.9,17,19.7,23.3,23.3,28.4,28.4,36],rush:[1,1,1.2,1.5,1.8,2.4,3.4,4,4.2,4.8,5.4,6.1,8.1,11.5,14.2,14.2,21.3,25,25,30.4,38.5],broken:[1,1,1,1.1,1.6,2.1,2.9,3.9,4.6,5.2,5.7,6.4,7.5,9.7,10.7,11.9,14.9,19.7,19.7,23.3,28.4],two:[1,1,1,1.4,1.7,2.2,3,4,4.2,4.5,5.2,6,7.5,9.6,12.7,18.3,25,41.1,45.9,65.5,119.5],three:[1,1,1.1,1.5,1.9,2.3,3,3.7,3.9,4.4,4.8,5.7,7.5,9.6,13.4,18.3,25,54.1,58,70,106],square:[1,1,1,1.4,1.9,2.9,3.6,4.3,4.8,5.7,6.5,7.5,8.8,10,14.2,21.3,30.4,160,160,160,160]};
+/* ---------- attempt records ----------
+   Each run logs its average green length and its main problem (too much yellow means greens were too short;
+   a line starved at red or a green with nobody to serve means greens were too long). */
 const usesQueue=r=>r.p.s!=='gt'||(!!r.op&&r.q.s!=='gt');
 function meanGreen(R){
   const NN=lv().net.nodes.length;let s=0;
@@ -1290,81 +1283,43 @@ const pct=(a,b)=>b?Math.round(100*a/b)+'%':'-';
 const ruleOfAttempt=a=>a.op?{p:{s:a.s1,cmp:SENSORS[a.s1].cmp,v:a.v1},op:a.op,q:{s:a.s2,cmp:SENSORS[a.s2].cmp,v:a.v2}}:{p:{s:a.s1,cmp:SENSORS[a.s1].cmp,v:a.v1},op:''};
 function recordAttempt(r,R,entry){
   const L=S.L,l=lv(),lvl=S.lvl+1,prev=[...S.attempts].reverse().find(a=>a.level===lvl);
-  const q=GREEN_Q[l.key]||[],m=entry.meanGreen;
+  const m=entry.meanGreen;
   const a={session_id:S.sid,player_id:S.player||'',attempt_id:S.attempts.length+1,level:lvl,level_key:l.key,day:l.day,level_name:l.name,
     attempt_in_level:S.attempts.filter(x=>x.level===lvl).length+1,visit:S.visits[S.lvl],at:new Date().toISOString(),
     sec_in_level:Math.round((performance.now()-L.t0)/1000),
     rule_text:ruleText(r),s1:r.p.s,v1:r.p.v,op:r.op||'',s2:r.op?r.q.s:'',v2:r.op?r.q.v:'',conditions:r.op?2:1,uses_queue:usesQueue(r),
     parts_changed:prev?ruleDiff(ruleOfAttempt(prev),r):null,parts_changed_from_given:l.start?ruleDiff(l.start,r):null,
     pass:R.pass,stars:R.stars,avg_wait:+R.avgWait.toFixed(2),turned_away:R.overflow,gridlock_at:R.gridlock?R.gridlock.t:null,
-    cause:entry.cause,mean_green:m,chance_longer:+(q.filter(x=>x>m).length/21).toFixed(3),chance_shorter:+(q.filter(x=>x<m).length/21).toFixed(3),
+    cause:entry.cause,mean_green:m,
     yellow_share:entry.lostShare,idle_s:R.idle.reduce((x,y)=>x+y,0),blocked_s:R.blocked.reduce((x,y)=>x+y,0),blocked_a_s:R.blocked[0],boxed_s:R.boxed.reduce((x,y)=>x+y,0),
     speed:S.speed,skipped_to_end:false,pauses:0,steps:0};
   S.attempts.push(a);S.cur=a;
 }
-/* ===== Measures from attempt records. Keep this block identical in Signal Rules Dashboard.html. ===== */
-function measuresFrom(atts){
-  const WANT={yellow:1,starved:-1,idle:-1};
-  const pairs=[],last={};
-  for(const a of atts){const k=a.session_id+'|'+a.level;if(last[k])pairs.push([last[k],a]);last[k]=a;}
-  const M={};
-  const br=atts.filter(a=>a.level_key==='broken'),fix=br.find(a=>a.pass);
-  M.debugging={runs:br.length,ran_given_first:br.length?br[0].parts_changed_from_given===0:null,fixed:!!fix,
-    parts_changed:fix?fix.parts_changed_from_given:null,runs_to_fix:fix?br.indexOf(fix)+1:null,chance_one_part_fix:0.29};
-  const ed=pairs.map(p=>p[1].parts_changed);
-  M.one_change={edits:ed.filter(x=>x>0).length,one_part:ed.filter(x=>x===1).length,reruns_no_change:ed.filter(x=>x===0).length};
-  M.one_change.share=M.one_change.edits?+(M.one_change.one_part/M.one_change.edits).toFixed(2):null;
-  const dir={judged:0,right:0,wrong:0,unchanged:0,expected_by_chance:0};
-  for(const [a,b] of pairs){const w=WANT[a.cause];if(!w)continue;
-    const d=Math.sign(b.mean_green-a.mean_green);if(d===0){dir.unchanged++;continue;}
-    dir.judged++;if(d===w)dir.right++;else dir.wrong++;
-    const up=a.chance_longer,down=a.chance_shorter;dir.expected_by_chance+=up+down?(w>0?up:down)/(up+down):0.5;}
-  dir.share=dir.judged?+(dir.right/dir.judged).toFixed(2):null;dir.expected_by_chance=+dir.expected_by_chance.toFixed(1);M.direction=dir;
-  const fr=atts.filter(a=>a.level_key==='square'),g1=fr.findIndex(a=>a.gridlock_at!==null),after=g1>=0?fr.slice(g1+1):[];
-  const ga=pairs.filter(p=>p[0].level_key==='square'&&p[0].cause==='gridlock'&&p[1].mean_green!==p[0].mean_green);
-  M.gridlock={runs:fr.length,first_gridlock_run:g1>=0?g1+1:null,runs_after_first:after.length,gridlocked_after_first:after.filter(a=>a.gridlock_at!==null).length,
-    chance:0.68,edits_after_gridlock:ga.length,shorter_greens_after_gridlock:ga.filter(p=>p[1].mean_green<p[0].mean_green).length};
-  M.gridlock.rate_after_first=after.length?+(M.gridlock.gridlocked_after_first/after.length).toFixed(2):null;
-  const cr=atts.filter(a=>(a.level_key==='two'||a.level_key==='three')&&a.pass);
-  M.feedback={clearing_runs:cr.length,with_queue_sensor:cr.filter(a=>a.uses_queue).length};
-  const sp=pairs.filter(p=>(p[0].level_key==='two'||p[0].level_key==='three')&&p[0].blocked_a_s>=6);
-  M.interconnection={spillback_runs_with_next:sp.length,less_blocked_next:sp.filter(p=>p[1].blocked_a_s<p[0].blocked_a_s).length};
-  return M;
-}
-/* ===== end of shared block ===== */
-const measures=()=>measuresFrom(S.attempts);
 const SKILLS=[
   {tier:'strong',skill:'CT: Debugging',
    does:'On Day 3, runs the broken rule to see what it does, then fixes it with as small a change as possible.',
    logs:'Whether run 1 used the given rule unchanged; parts changed between the given rule and the fix; runs to fix.',
-   why:'Only 7 of the 24 one-part changes to the given rule fix it (29%), while rewriting the whole rule passes 40–70% of the time. A one-part fix shows the player found the fault, not just some rule that works.',
-   score:M=>{const d=M.debugging;if(!d.runs)return 'Day 3 not played yet';return 'Ran the given rule first: '+(d.ran_given_first?'yes':'no')+(d.fixed?'. Fixed with '+d.parts_changed+' part'+(d.parts_changed===1?'':'s')+' changed, in '+d.runs_to_fix+' run'+(d.runs_to_fix===1?'':'s'):'. Not fixed yet ('+d.runs+' run'+(d.runs===1?'':'s')+')');}},
+   why:'Only 7 of the 24 one-part changes to the given rule fix it (29%), while rewriting the whole rule passes 40–70% of the time. A one-part fix shows the player found the fault, not just some rule that works.'},
   {tier:'strong',skill:'CT: Systematic testing',
    does:'Changes one thing between runs, so each run tests one idea.',
    logs:'Parts changed between consecutive runs on the same day; reruns with no change.',
-   why:'Seen directly on every edit, on every day. Changing settings at random usually changes several parts at once.',
-   score:M=>{const o=M.one_change;return o.edits?o.one_part+' of '+o.edits+' edits changed one part ('+pct(o.one_part,o.edits)+'). '+o.reruns_no_change+' rerun'+(o.reruns_no_change===1?'':'s')+' with no change':'No edits yet';}},
+   why:'Seen directly on every edit, on every day. Changing settings at random usually changes several parts at once.'},
   {tier:'strong',skill:'ST: Reinforcing loops',
    does:'After seeing the square gridlock, finds rules that keep the loop of blocks from closing.',
    logs:'Which Festival Day runs gridlocked; average green before and after each gridlock.',
-   why:'68% of all possible rules gridlock this square. A player whose runs stay clear after the first gridlock is doing far better than chance.',
-   score:M=>{const g=M.gridlock;if(!g.runs)return 'Festival Day not played yet';if(g.first_gridlock_run===null)return 'No gridlock in '+g.runs+' run'+(g.runs===1?'':'s');
-     return 'First gridlock on run '+g.first_gridlock_run+'. After it: '+(g.runs_after_first?g.gridlocked_after_first+' of '+g.runs_after_first+' runs gridlocked ('+pct(g.gridlocked_after_first,g.runs_after_first)+', chance 68%)':'no runs yet')+(g.edits_after_gridlock?'. Shorter greens after '+g.shorter_greens_after_gridlock+' of '+g.edits_after_gridlock+' gridlocks':'');}},
+   why:'68% of all possible rules gridlock this square. A player whose runs stay clear after the first gridlock is doing far better than chance.'},
   {tier:'partial',skill:'ST: Stocks and flows',
    does:'After a run, moves the rule in the direction that rebalances the lines: longer greens when time went to yellow, shorter greens when a line sat at red too long or a green stayed on with nobody to serve.',
    logs:'Each run’s average green length and its main problem; the average green of the next run.',
-   why:'Average green length is computed from each run, so the direction of an edit is judged automatically. Chance is worked out for each edit from every possible rule on that day, because after an extreme run most changes drift back toward the middle anyway. <b>Limit:</b> after a failed run, about 70% of all rules already move the green the right way, and in scripted tests a random player beat that rate by as much as a careful one. Log it, but do not rank players on it.',
-   score:M=>{const d=M.direction;return d.judged?d.right+' of '+d.judged+' edits went the right way; random rules would manage about '+d.expected_by_chance+' of '+d.judged+(d.unchanged?'. '+d.unchanged+' did not change the green length':''):'No edits after a run with a clear problem yet';}},
+   why:'Each attempt records its average green length, so the direction of every edit can be read from the data. <b>Limit:</b> after a failed run, about 70% of all rules already move the green the right way, and in scripted tests a random player beat that rate by as much as a careful one. Log it, but do not rank players on it.'},
   {tier:'partial',skill:'ST: Feedback',
    does:'On Days 4 and 5, clears with a rule that reacts to the lines instead of the clock.',
    logs:'Whether each clearing run on Days 4 and 5 uses a queue sensor.',
-   why:'Days 4–5 are the only place this is a real choice: clock-only rules can clear (189 of 707 clearing rules) but never earn 3 stars. <b>Limit:</b> it shows the player uses responsive control, not that they understand the loop it creates.',
-   score:M=>{const f=M.feedback;return f.clearing_runs?f.with_queue_sensor+' of '+f.clearing_runs+' clearing runs used a queue sensor':'No clearing runs on Days 4–5 yet';}},
+   why:'Days 4–5 are the only place this is a real choice: clock-only rules can clear (189 of 707 clearing rules) but never earn 3 stars. <b>Limit:</b> it shows the player uses responsive control, not that they understand the loop it creates.'},
   {tier:'partial',skill:'ST: Interconnection',
    does:'On Days 4 and 5, after light A sat green behind a full block, changes the rule so the jam stops spilling back.',
    logs:'Seconds light A was green but blocked, in each run and the next.',
-   why:'<b>Limit:</b> it is an outcome, so a lucky edit and an informed one look the same, and after a badly blocked run almost any change blocks less. Read it next to the systematic-testing score.',
-   score:M=>{const c=M.interconnection;return c.spillback_runs_with_next?'Next run less blocked after '+c.less_blocked_next+' of '+c.spillback_runs_with_next+' spillback runs':'No spillback runs followed by another run yet';}}
+   why:'<b>Limit:</b> it is an outcome, so a lucky edit and an informed one look the same, and after a badly blocked run almost any change blocks less. Read it alongside how systematically the player edits.'}
 ];
 
 /* ---------- researcher view ---------- */
@@ -1393,13 +1348,12 @@ function renderRV(){
   rows.push(['Last run: stars',last?String(last.stars):'-'],['Pauses / steps this level',S.log.filter(e=>e.level===L.idx+1&&e.type==='pause').length+' / '+S.log.filter(e=>e.level===L.idx+1&&e.type==='step').length]);
   if(lv().start)rows.push(['Parts changed from the given rule',last?String(ruleDiff(lv().start,last.rule)):'-']);
   rows.push(['Levels cleared',Object.keys(S.done).length+' of '+NLV],['Stars',LEVELS.reduce((a,_,i)=>a+(S.done[i]?S.done[i].stars:0),0)+' of '+(3*NLV)]);
-  const M=measures();
-  $('#rvSkills').innerHTML=SKILLS.map(k=>'<tr class="'+k.tier+'"><td><b>'+k.skill+'</b><br><span class="tier '+k.tier+'">'+(k.tier==='strong'?'Strong':'Partial')+'</span></td><td>'+k.does+'</td><td>'+k.logs+'</td><td class="score">'+esc(k.score(M))+'</td><td>'+k.why+'</td></tr>').join('');
+  $('#rvSkills').innerHTML=SKILLS.map(k=>'<tr class="'+k.tier+'"><td><b>'+k.skill+'</b><br><span class="tier '+k.tier+'">'+(k.tier==='strong'?'Strong':'Partial')+'</span></td><td>'+k.does+'</td><td>'+k.logs+'</td><td>'+k.why+'</td></tr>').join('');
   $('#rvLive').innerHTML=rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>').join('');
   $('#logText').value=JSON.stringify(exportObj(),null,1);
 }
 function exportObj(){return{game:'Signal Rules',version:6,session:S.sid,player:S.player||'',started:S.started,updated:new Date().toISOString(),
-  attempts:S.attempts,measures:measures(),levels:S.done,events:S.log};}
+  attempts:S.attempts,levels:S.done,events:S.log};}
 /* Every session is kept in this browser (localStorage), so a lab computer collects all of its players.
    PAST holds sessions from this page too, in case storage is blocked. */
 const STORE='signalRules.sessions.v1',PAST=[];

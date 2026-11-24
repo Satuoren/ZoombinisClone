@@ -66,11 +66,6 @@ th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px soli
 th{font-family:var(--f-mono);font-weight:500;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
 td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 td.mono{font-family:var(--f-mono);font-size:12px}
-tr.strong td{background:var(--good-soft)}
-tr.strong td:first-child{box-shadow:inset 3px 0 0 var(--good)}
-.tier{display:inline-block;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:6px;margin-top:4px}
-.tier.strong{background:var(--good);color:var(--surface)}
-.tier.partial{border:1px solid var(--line);color:var(--muted)}
 tbody tr.pick{cursor:pointer}
 tbody tr.pick:hover td{background:var(--surface-2)}
 tbody tr.sel td{background:var(--accent-soft)}
@@ -83,11 +78,6 @@ tbody tr.sel td{background:var(--accent-soft)}
 .bar.cleared{background:var(--accent);border-right:2px solid var(--surface)}
 .legend{display:flex;gap:16px;font-size:var(--fs-s);color:var(--muted)}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
-.strip{display:block}
-.strip .dot{fill:var(--accent);stroke:var(--surface);stroke-width:2}
-.strip .axis{stroke:var(--line)}
-.strip .chance{stroke:var(--bad);stroke-dasharray:3 3}
-.strip text{font-family:var(--f-mono);font-size:10px;fill:var(--muted)}
 #tip{position:fixed;z-index:9;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;padding:5px 8px;border-radius:7px;max-width:280px;display:none}
 details summary{cursor:pointer;font-weight:600}
 dl.dict{display:grid;grid-template-columns:minmax(150px,auto) 1fr;gap:4px 14px;font-size:var(--fs-s);margin:8px 0 0}
@@ -134,37 +124,6 @@ const DAYS=[{key:'quiet',day:'Training',name:'Quiet corner'},{key:'busy',day:'Da
   {key:'broken',day:'Day 3',name:'The broken light'},{key:'two',day:'Day 4',name:'Two lights'},{key:'three',day:'Day 5',name:'Three lights'},{key:'square',day:'Festival Day',name:'Gridlock square'}];
 const CAUSE={pass:'3 stars',yellow:'too much yellow',starved:'a line starved at red',idle:'green with nobody to serve',spillback:'spillback from a full block',gridlock:'gridlock',other:'other'};
 
-/* ===== Measures from attempt records. Copied from Signal Rules.html: keep the two identical. ===== */
-function measuresFrom(atts){
-  const WANT={yellow:1,starved:-1,idle:-1};
-  const pairs=[],last={};
-  for(const a of atts){const k=a.session_id+'|'+a.level;if(last[k])pairs.push([last[k],a]);last[k]=a;}
-  const M={};
-  const br=atts.filter(a=>a.level_key==='broken'),fix=br.find(a=>a.pass);
-  M.debugging={runs:br.length,ran_given_first:br.length?br[0].parts_changed_from_given===0:null,fixed:!!fix,
-    parts_changed:fix?fix.parts_changed_from_given:null,runs_to_fix:fix?br.indexOf(fix)+1:null,chance_one_part_fix:0.29};
-  const ed=pairs.map(p=>p[1].parts_changed);
-  M.one_change={edits:ed.filter(x=>x>0).length,one_part:ed.filter(x=>x===1).length,reruns_no_change:ed.filter(x=>x===0).length};
-  M.one_change.share=M.one_change.edits?+(M.one_change.one_part/M.one_change.edits).toFixed(2):null;
-  const dir={judged:0,right:0,wrong:0,unchanged:0,expected_by_chance:0};
-  for(const [a,b] of pairs){const w=WANT[a.cause];if(!w)continue;
-    const d=Math.sign(b.mean_green-a.mean_green);if(d===0){dir.unchanged++;continue;}
-    dir.judged++;if(d===w)dir.right++;else dir.wrong++;
-    const up=a.chance_longer,down=a.chance_shorter;dir.expected_by_chance+=up+down?(w>0?up:down)/(up+down):0.5;}
-  dir.share=dir.judged?+(dir.right/dir.judged).toFixed(2):null;dir.expected_by_chance=+dir.expected_by_chance.toFixed(1);M.direction=dir;
-  const fr=atts.filter(a=>a.level_key==='square'),g1=fr.findIndex(a=>a.gridlock_at!==null),after=g1>=0?fr.slice(g1+1):[];
-  const ga=pairs.filter(p=>p[0].level_key==='square'&&p[0].cause==='gridlock'&&p[1].mean_green!==p[0].mean_green);
-  M.gridlock={runs:fr.length,first_gridlock_run:g1>=0?g1+1:null,runs_after_first:after.length,gridlocked_after_first:after.filter(a=>a.gridlock_at!==null).length,
-    chance:0.68,edits_after_gridlock:ga.length,shorter_greens_after_gridlock:ga.filter(p=>p[1].mean_green<p[0].mean_green).length};
-  M.gridlock.rate_after_first=after.length?+(M.gridlock.gridlocked_after_first/after.length).toFixed(2):null;
-  const cr=atts.filter(a=>(a.level_key==='two'||a.level_key==='three')&&a.pass);
-  M.feedback={clearing_runs:cr.length,with_queue_sensor:cr.filter(a=>a.uses_queue).length};
-  const sp=pairs.filter(p=>(p[0].level_key==='two'||p[0].level_key==='three')&&p[0].blocked_a_s>=6);
-  M.interconnection={spillback_runs_with_next:sp.length,less_blocked_next:sp.filter(p=>p[1].blocked_a_s<p[0].blocked_a_s).length};
-  return M;
-}
-/* ===== end of shared block ===== */
-
 const sessions=new Map();let skipped=0;
 
 /* ---------- loading ---------- */
@@ -207,7 +166,6 @@ function players(){
   return [...by.values()].map(p=>{
     p.sessions.sort((a,b)=>(a.started||'').localeCompare(b.started||''));
     p.attempts=p.sessions.flatMap(s=>[...s.attempts].sort((a,b)=>a.attempt_id-b.attempt_id).map(a=>Object.assign({},a,{player:p.id})));
-    p.M=measuresFrom(p.attempts);
     p.days={};
     for(const d of DAYS){const at=p.attempts.filter(a=>a.level_key===d.key);if(!at.length)continue;
       const first=at.findIndex(a=>a.pass);p.days[d.key]={tried:at.length,cleared:first>=0,toClear:first>=0?first+1:null,best:Math.max(0,...at.map(a=>a.stars))};}
@@ -217,84 +175,13 @@ function players(){
   }).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
 }
 
-/* ---------- small charts ---------- */
-// Dot strip: one dot per player on a 0..1 (or -0.5..0.5) scale, with an optional dashed chance line.
-function strip(points,opt){
-  if(!points.length)return '<span class="hint">no players yet</span>';
-  const W=240,H=38,pl=8,pr=8,lo=opt.lo,hi=opt.hi,X=v=>pl+(W-pl-pr)*(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo);
-  const P=['<svg class="strip" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+esc(opt.label)+'">',
-    '<line class="axis" x1="'+pl+'" y1="18" x2="'+(W-pr)+'" y2="18"/>',
-    '<text x="'+pl+'" y="35">'+esc(opt.loLab)+'</text><text x="'+(W-pr)+'" y="35" text-anchor="end">'+esc(opt.hiLab)+'</text>'];
-  if(opt.chance!=null)P.push('<line class="chance" x1="'+X(opt.chance)+'" y1="4" x2="'+X(opt.chance)+'" y2="28"/><text x="'+X(opt.chance)+'" y="35" text-anchor="middle" style="fill:var(--bad)">'+esc(opt.chanceLab)+'</text>');
-  const seen={};
-  points.forEach(p=>{const x=X(p.v),k=Math.round(x/4);seen[k]=(seen[k]||0)+1;const y=18-((seen[k]-1)%3)*5*(seen[k]%2?1:-1);
-    P.push('<circle class="dot" cx="'+x.toFixed(1)+'" cy="'+y+'" r="5" data-tip="'+esc(p.tip)+'"/>');});
-  P.push('</svg>');return P.join('');
-}
-
-/* ---------- aggregate measures ---------- */
-function aggregate(ps){
-  const rows=[];
-  const dbg=ps.filter(p=>p.M.debugging.runs),fixed=dbg.filter(p=>p.M.debugging.fixed),one=fixed.filter(p=>p.M.debugging.parts_changed===1);
-  rows.push({tier:'strong',name:'CT: Debugging',sub:'Day 3: finds and fixes the fault in a given rule',
-    n:dbg.length,
-    result:dbg.length?one.length+' of '+fixed.length+' players who fixed it did so with a one-part change ('+pct(one.length,fixed.length)+'). '
-      +dbg.filter(p=>p.M.debugging.ran_given_first).length+' of '+dbg.length+' ran the given rule before changing it. Median runs to fix: '+fmt(median(fixed.map(p=>p.M.debugging.runs_to_fix)),1)+'.':'–',
-    chance:'29% of one-part changes fix the rule',
-    viz:strip(fixed.map(p=>({v:Math.min(p.M.debugging.parts_changed,7),tip:p.id+': fixed with '+p.M.debugging.parts_changed+' part'+(p.M.debugging.parts_changed===1?'':'s')+' changed, '+p.M.debugging.runs_to_fix+' runs'})),
-      {lo:1,hi:7,loLab:'1 part',hiLab:'7 parts',label:'Parts changed in each player’s fix'})});
-  const sys=ps.filter(p=>p.M.one_change.edits>=3);
-  rows.push({tier:'strong',name:'CT: Systematic testing',sub:'Changes one part between runs',
-    n:sys.length,
-    result:sys.length?'Median share of one-part edits: '+pct(median(sys.map(p=>p.M.one_change.share)),1)+'. '+sys.filter(p=>p.M.one_change.share>=0.5).length+' of '+sys.length+' players made at least half their edits one part at a time.':'–',
-    chance:'Random edits: about 6% one-part in scripted tests',
-    viz:strip(sys.map(p=>({v:p.M.one_change.share,tip:p.id+': '+p.M.one_change.one_part+' of '+p.M.one_change.edits+' edits one part'})),{lo:0,hi:1,loLab:'0%',hiLab:'100%',label:'Share of one-part edits per player'}),
-    note:'Players with at least 3 edits.'});
-  const gl=ps.filter(p=>p.M.gridlock.runs_after_first>0);
-  rows.push({tier:'strong',name:'ST: Reinforcing loops',sub:'Festival Day: stops gridlocking after seeing it once',
-    n:gl.length,
-    result:gl.length?'Median gridlock rate after the first gridlock: '+pct(median(gl.map(p=>p.M.gridlock.rate_after_first)),1)+'. '+gl.filter(p=>p.M.gridlock.rate_after_first<0.68).length+' of '+gl.length+' players stayed below chance.':'–',
-    chance:'68% of all rules gridlock',
-    viz:strip(gl.map(p=>({v:p.M.gridlock.rate_after_first,tip:p.id+': '+p.M.gridlock.gridlocked_after_first+' of '+p.M.gridlock.runs_after_first+' later runs gridlocked'})),{lo:0,hi:1,loLab:'0%',hiLab:'100%',chance:0.68,chanceLab:'68%',label:'Gridlock rate after the first gridlock'}),
-    note:'Players who gridlocked and ran again.'});
-  const dr=ps.filter(p=>p.M.direction.judged>=3);
-  const tr=ps.reduce((a,p)=>a+p.M.direction.right,0),tj=ps.reduce((a,p)=>a+p.M.direction.judged,0),te=ps.reduce((a,p)=>a+p.M.direction.expected_by_chance,0);
-  rows.push({tier:'partial',name:'ST: Stocks and flows',sub:'Moves the green the right way after a run with a clear problem',
-    n:dr.length,
-    result:tj?tr+' of '+tj+' edits went the right way; random rules would manage about '+fmt(te,1)+'.':'–',
-    chance:'Worked out per edit; about 70% on average',
-    viz:strip(dr.map(p=>{const d=p.M.direction;return{v:(d.right-d.expected_by_chance)/d.judged,tip:p.id+': '+d.right+' of '+d.judged+' right, chance '+d.expected_by_chance};}),{lo:-0.5,hi:0.5,loLab:'−50 pts',hiLab:'+50 pts',chance:0,chanceLab:'chance',label:'Right-direction edits above chance, per player'}),
-    note:'Limit: random play also lands slightly above chance. Do not rank players on it.'});
-  const fb=ps.filter(p=>p.M.feedback.clearing_runs);
-  rows.push({tier:'partial',name:'ST: Feedback',sub:'Days 4–5: clears with a rule that reacts to the lines',
-    n:fb.length,
-    result:fb.length?fb.filter(p=>p.M.feedback.with_queue_sensor===p.M.feedback.clearing_runs).length+' of '+fb.length+' players used a queue sensor in every clearing run.':'–',
-    chance:'Clock-only rules: 189 of 707 clearing rules',
-    viz:strip(fb.map(p=>({v:p.M.feedback.with_queue_sensor/p.M.feedback.clearing_runs,tip:p.id+': '+p.M.feedback.with_queue_sensor+' of '+p.M.feedback.clearing_runs+' clearing runs'})),{lo:0,hi:1,loLab:'0%',hiLab:'100%',label:'Share of clearing runs with a queue sensor'}),
-    note:'Limit: shows responsive control, not understanding of the loop.'});
-  const ic=ps.filter(p=>p.M.interconnection.spillback_runs_with_next);
-  rows.push({tier:'partial',name:'ST: Interconnection',sub:'Days 4–5: reduces spillback after seeing it',
-    n:ic.length,
-    result:ic.length?'Next run less blocked after '+ic.reduce((a,p)=>a+p.M.interconnection.less_blocked_next,0)+' of '+ic.reduce((a,p)=>a+p.M.interconnection.spillback_runs_with_next,0)+' spillback runs.':'–',
-    chance:'Not computed',
-    viz:strip(ic.map(p=>({v:p.M.interconnection.less_blocked_next/p.M.interconnection.spillback_runs_with_next,tip:p.id+': '+p.M.interconnection.less_blocked_next+' of '+p.M.interconnection.spillback_runs_with_next})),{lo:0,hi:1,loLab:'0%',hiLab:'100%',label:'Share of spillback runs followed by less blocking'}),
-    note:'Limit: after a badly blocked run, almost any change blocks less.'});
-  return rows;
-}
-
 /* ---------- CSV ---------- */
 const ATT_COLS=['player','session_id','attempt_id','day','level','level_key','attempt_in_level','visit','at','sec_in_level','rule_text','s1','v1','op','s2','v2','conditions','uses_queue',
-  'parts_changed','parts_changed_from_given','pass','stars','avg_wait','turned_away','gridlock_at','cause','mean_green','chance_longer','chance_shorter','yellow_share','idle_s','blocked_s','blocked_a_s','boxed_s','speed','skipped_to_end','pauses','steps'];
+  'parts_changed','parts_changed_from_given','pass','stars','avg_wait','turned_away','gridlock_at','cause','mean_green','yellow_share','idle_s','blocked_s','blocked_a_s','boxed_s','speed','skipped_to_end','pauses','steps'];
 const csvCell=v=>{if(v==null)return '';const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
 const toCSV=(cols,rows)=>[cols.join(',')].concat(rows.map(r=>cols.map(c=>csvCell(r[c])).join(','))).join('\n');
 function playerRow(p){
-  const M=p.M,r={player:p.id,sessions:p.sessions.length,attempts:p.attempts.length,days_cleared:p.cleared,stars:p.stars,
-    debug_ran_given_first:M.debugging.ran_given_first,debug_fixed:M.debugging.fixed,debug_parts_changed:M.debugging.parts_changed,debug_runs_to_fix:M.debugging.runs_to_fix,
-    edits:M.one_change.edits,one_part_edits:M.one_change.one_part,one_part_share:M.one_change.share,reruns_no_change:M.one_change.reruns_no_change,
-    gridlock_first_run:M.gridlock.first_gridlock_run,gridlock_runs_after_first:M.gridlock.runs_after_first,gridlock_rate_after_first:M.gridlock.rate_after_first,
-    direction_judged:M.direction.judged,direction_right:M.direction.right,direction_expected_by_chance:M.direction.expected_by_chance,
-    feedback_clearing_runs:M.feedback.clearing_runs,feedback_with_queue:M.feedback.with_queue_sensor,
-    spillback_runs:M.interconnection.spillback_runs_with_next,spillback_less_blocked_next:M.interconnection.less_blocked_next};
+  const r={player:p.id,sessions:p.sessions.length,attempts:p.attempts.length,days_cleared:p.cleared,stars:p.stars};
   DAYS.forEach(d=>{const x=p.days[d.key];r['runs_'+d.key]=x?x.tried:'';r['runs_to_clear_'+d.key]=x&&x.toClear?x.toClear:'';r['stars_'+d.key]=x?x.best:'';});
   return r;
 }
@@ -336,22 +223,11 @@ function render(msg){
       return '<tr><td>'+esc(d.day)+': '+esc(d.name)+'</td><td class="num">'+t.length+'</td><td class="num">'+c.length+'</td><td class="num">'+fmt(median(c.map(p=>p.days[d.key].toClear)),1)+'</td><td class="num">'+fmt(median(t.map(p=>p.days[d.key].best)),1)+'</td><td>'+(top?esc(CAUSE[top[0]]||top[0])+' ('+top[1]+' runs)':'–')+'</td></tr>';}).join('')
     +'</tbody></table></div></section>');
 
-  // skills
-  H.push('<section class="card"><div><h2>Skill measures</h2><p class="hint">Highlighted rows are strong measures: the game gives a real choice and the result can be compared with random play. Partial rows carry the limit shown. Each dot is one player; hover it for details.</p></div>'
-    +'<div class="tablewrap"><table><thead><tr><th>Measure</th><th class="num">Players</th><th>Result across players</th><th>Each player</th><th>Chance or reference</th></tr></thead><tbody>'
-    +aggregate(PS).map(r=>'<tr class="'+r.tier+'"><td><b>'+r.name+'</b><br><span class="hint">'+r.sub+'</span><br><span class="tier '+r.tier+'">'+(r.tier==='strong'?'Strong':'Partial')+'</span></td><td class="num">'+r.n+'</td><td>'+esc(r.result)+(r.note?'<br><span class="hint">'+esc(r.note)+'</span>':'')+'</td><td>'+r.viz+'</td><td class="hint">'+esc(r.chance)+'</td></tr>').join('')
-    +'</tbody></table></div></section>');
-
   // players
-  H.push('<section class="card"><div><h2>Players</h2><p class="hint">Click a player to show only their attempts below.</p></div><div class="tablewrap"><table><thead><tr>'
-    +'<th>Player</th><th class="num">Sessions</th><th class="num">Attempts</th><th class="num">Days cleared</th><th class="num">Stars</th><th>Day 3 fix</th><th class="num">One-part edits</th><th>Gridlock after first</th><th class="num">Right-way edits</th><th class="num">Queue sensor, Days 4–5</th></tr></thead><tbody>'
-    +PS.map(p=>{const M=p.M,d=M.debugging,g=M.gridlock,o=M.one_change,r=M.direction,f=M.feedback;
-      return '<tr class="pick'+(sel.player===p.id?' sel':'')+'" data-player="'+esc(p.id)+'" tabindex="0"><td>'+esc(p.id)+'</td><td class="num">'+p.sessions.length+'</td><td class="num">'+p.attempts.length+'</td><td class="num">'+p.cleared+' / '+DAYS.length+'</td><td class="num">'+p.stars+'</td>'
-        +'<td>'+(!d.runs?'–':d.fixed?(d.parts_changed===1?'<span class="ok">1 part</span>':d.parts_changed+' parts')+', '+d.runs_to_fix+' run'+(d.runs_to_fix===1?'':'s')+(d.ran_given_first?'':', did not run it first'):'<span class="no">not fixed</span> ('+d.runs+')')+'</td>'
-        +'<td class="num">'+(o.edits?pct(o.one_part,o.edits)+' <span class="hint">('+o.edits+')</span>':'–')+'</td>'
-        +'<td>'+(g.first_gridlock_run===null?(g.runs?'never':'–'):(g.runs_after_first?g.gridlocked_after_first+' of '+g.runs_after_first:'no later runs'))+'</td>'
-        +'<td class="num">'+(r.judged?r.right+' / '+r.judged+' <span class="hint">(chance '+r.expected_by_chance+')</span>':'–')+'</td>'
-        +'<td class="num">'+(f.clearing_runs?f.with_queue_sensor+' / '+f.clearing_runs:'–')+'</td></tr>';}).join('')
+  H.push('<section class="card"><div><h2>Players</h2><p class="hint">Click a player to show only their attempts below. Each day shows runs to clear, or runs tried in grey if not cleared.</p></div><div class="tablewrap"><table><thead><tr>'
+    +'<th>Player</th><th class="num">Sessions</th><th class="num">Attempts</th><th class="num">Days cleared</th><th class="num">Stars</th>'+DAYS.map(d=>'<th class="num">'+esc(d.day)+'</th>').join('')+'</tr></thead><tbody>'
+    +PS.map(p=>'<tr class="pick'+(sel.player===p.id?' sel':'')+'" data-player="'+esc(p.id)+'" tabindex="0"><td>'+esc(p.id)+'</td><td class="num">'+p.sessions.length+'</td><td class="num">'+p.attempts.length+'</td><td class="num">'+p.cleared+' / '+DAYS.length+'</td><td class="num">'+p.stars+'</td>'
+      +DAYS.map(d=>{const x=p.days[d.key];return '<td class="num">'+(!x?'–':x.cleared?x.toClear:'<span class="hint">'+x.tried+'</span>')+'</td>';}).join('')+'</tr>').join('')
     +'</tbody></table></div></section>');
 
   // clearing rules
@@ -369,14 +245,14 @@ function render(msg){
     +'</div><div id="attTable"></div></section>');
 
   // export + dictionary
-  H.push('<section class="card"><h2>Export</h2><div class="btnrow"><button type="button" class="ghost" id="xAtt">Attempts (CSV)</button><button type="button" class="ghost" id="xPl">Players and measures (CSV)</button><button type="button" class="ghost" id="xJson">All sessions combined (JSON)</button></div>'
+  H.push('<section class="card"><h2>Export</h2><div class="btnrow"><button type="button" class="ghost" id="xAtt">Attempts (CSV)</button><button type="button" class="ghost" id="xPl">Players (CSV)</button><button type="button" class="ghost" id="xJson">All sessions combined (JSON)</button></div>'
     +'<details><summary>What each attempt column means</summary><dl class="dict">'
     +[['player','Player ID, or “no ID” plus the session'],['attempt_id','Order of the attempt within its session'],['attempt_in_level','Attempt number on that day, across visits'],['visit','How many times the player had opened that day'],['sec_in_level','Seconds since the player opened the day'],
       ['rule_text / s1 v1 op s2 v2','The rule. Sensors: gt green time (≥), rq cars waiting at red (≥), gq cars waiting at green (≤)'],['uses_queue','The rule reads a line of cars, not only the clock'],
       ['parts_changed','Parts of the rule changed since the previous attempt on the same day (0 = rerun, blank = first)'],['parts_changed_from_given','Day 3 only: parts changed from the broken rule'],
       ['pass / stars','Cleared (nobody turned away, no gridlock) and stars earned'],['avg_wait','Average wait per car, in seconds'],['gridlock_at','Second the square locked up, if it did'],
       ['cause','Main problem: yellow (greens too short), starved (a line waited at red too long), idle (green with nobody to serve), spillback, gridlock, other, or pass (3 stars)'],
-      ['mean_green','Average length of a green, in seconds'],['chance_longer / chance_shorter','Share of all possible rules on that day with a longer or shorter average green'],
+      ['mean_green','Average length of a green, in seconds'],
       ['yellow_share','Share of the run the lights spent on yellow'],['idle_s / blocked_s / blocked_a_s / boxed_s','Seconds of green with nobody to serve; green but blocked ahead (all lights / light A); cars stuck in an intersection'],
       ['speed / skipped_to_end / pauses / steps','How the player watched the run']]
       .map(x=>'<dt>'+esc(x[0])+'</dt><dd>'+esc(x[1])+'</dd>').join('')+'</dl></details></section>');
